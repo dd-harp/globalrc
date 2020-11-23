@@ -62,6 +62,13 @@ test_that("available_data finds UGA outline", {
 })
 
 
+test_that("years_in_filenames picks up any filename",{
+    fns <- c("dfb2000.tif", "haha32.tif", "blah2019_16.tif")
+    by_year <- years_in_filenames(fns)
+    expect_equal(names(by_year), as.character(c(2000, 2019)))
+    expect_equal(unname(by_year), c(fns[1], fns[3]))
+})
+
 .default.options <- list(blocksize = 32L, single_tile_max = 2000L)
 
 test_that("plan_domain_decomposition makes one tile for small", {

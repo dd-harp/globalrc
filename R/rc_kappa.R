@@ -279,9 +279,12 @@ check_args <- function(args) {
 #' @return A list of numeric years.
 years_in_filenames <- function(filenames) {
     matches <- regexpr("[0-9]{4}", filenames)
-    start <- as.numeric(matches)
-    stop <- as.numeric(attr(matches, "match.length")) + start - 1
-    as.numeric(substr(filenames, start, stop))
+    start <- matches[matches > 0]
+    stop <- attr(matches, "match.length")[matches > 0] + start - 1
+    year_files <- filenames[matches > 0]
+    years <- substr(year_files, start, stop)
+    names(year_files) <- years
+    year_files
 }
 
 
@@ -306,10 +309,10 @@ pixel_bounding_box <- function(map_raster, bbox) {
 available_data <- function(input_version, country_code, select_years) {
     pfpr_dir <- rampdata::workflow_path("pfpr")
     pfpr_files <- list.files(rampdata::as.path(pfpr_dir), "*.tif")
-    pfpr_years <- years_in_filenames(pfpr_files)
+    pfpr_years <- as.integer(names(years_in_filenames(pfpr_files)))
     am_dir <- rampdata::workflow_path("am")
     am_files <- list.files(rampdata::as.path(am_dir), "*.tif")
-    am_years <- years_in_filenames(am_files)
+    am_years <- as.integer(names(years_in_filenames(am_files)))
     # We could choose, instead, to extend either one to cover missing years
     # in the other.
     shared_years <- sort(intersect(am_years, pfpr_years))
@@ -317,7 +320,7 @@ available_data <- function(input_version, country_code, select_years) {
         shared_years <- sort(intersect(shared_years, select_years))
     }
 
-    pr_fn <- paste0("PfPR_median_Africa_admin0_", shared_years[1], ".tif")
+    pr_fn <- pfpr_files[1]
     pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
     pfpr <- raster::raster(rampdata::as.path(pfpr_file))
     whole_input_extent <- c(rmin = 1, rmax = raster::nrow(pfpr),
@@ -375,13 +378,16 @@ available_data <- function(input_version, country_code, select_years) {
 
 #' Get all the data for a country as a convenience function.
 data_for_country <- function(country_alpha3, years) {
-    pfpr_dir <- rampdata::workflow_path("pfpr")
-    am_dir <- rampdata::workflow_path("am")
-
+    # The country will be our lat-long outline.
     outline_sf <- gadm_country_shapefile(country_alpha3)
     bbox <- sf::st_bbox(outline_sf)
-    pr_fn <- paste0("PfPR_median_Africa_admin0_", years[1], ".tif")
-    pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
+
+    pfpr_dir <- rampdata::workflow_path("pfpr")
+    am_dir <- rampdata::workflow_path("am")
+    pfpr_yearly <- years_in_filenames(list.files(rampdata::as.path(pfpr_dir)))
+    am_yearly <- years_in_filenames(list.files(rampdata::as.path(am_dir)))
+
+    pfpr_file <- rampdata::add_path(pfpr_dir, file = pfpr_yearly[1])
     pfpr <- raster::raster(rampdata::as.path(pfpr_file))
     domain_extent <- pixel_bounding_box(pfpr, bbox)
     flog.debug("domain_extent", paste(domain_extent, collapse = ","))
@@ -390,7 +396,7 @@ data_for_country <- function(country_alpha3, years) {
     am_all <- list()
     for (year_idx in 1:length(years)) {
         year <- years[year_idx]
-        pr_fn <- paste0("PfPR_median_Africa_admin0_", year, ".tif")
+        pr_fn <- pfpr_yearly[as.character(year)]
         pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
         if (!file.exists(rampdata::as.path(pfpr_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(pfpr_file))
@@ -398,9 +404,8 @@ data_for_country <- function(country_alpha3, years) {
             stop(msg)
         }
 
-        am_file <- rampdata::add_path(
-            am_dir,
-            file = paste0(year, ".effective.treatment.tif"))
+        am_fn <- am_yearly[as.character(year)]
+        am_file <- rampdata::add_path(am_dir, file = am_fn)
         if (!file.exists(rampdata::as.path(am_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(am_file))
             flog.error(msg)
@@ -459,9 +464,13 @@ data_for_country <- function(country_alpha3, years) {
         sentinel <- dim(list_of_matrices[[1]])
         array(do.call(c, list_of_matrices), dim = c(sentinel, length(list_of_matrices)))
     }
+    pfpr_arr <- combine(pfpr_all)
+    am_arr <- combine(am_all)
+    stopifnot(length(dim(pfpr_arr)) == 3)
+    stopifnot(length(dim(am_arr)) == 3)
     list(
-        pfpr = combine(pfpr_all),
-        am = combine(am_all)
+        pfpr = pfpr_arr,
+        am = am_arr
     )
 }
 
@@ -478,12 +487,21 @@ load_data <- function(config, pr2ar_version, domain_extent, years) {
     pr_to_ar_dt <- data.table::fread(rampdata::as.path(pr2ar_rp))
     pfpr_dir <- rampdata::workflow_path("pfpr")
     am_dir <- rampdata::workflow_path("am")
+    pfpr_yearly <- years_in_filenames(list.files(rampdata::as.path(pfpr_dir)))
+    am_yearly <- years_in_filenames(list.files(rampdata::as.path(am_dir)))
 
     pfpr_all <- list()
     am_all <- list()
     for (year_idx in 1:length(years)) {
         year <- years[year_idx]
-        pr_fn <- paste0("PfPR_median_Africa_admin0_", year, ".tif")
+        year_str <- as.character(year)
+        if (!year_str %in% names(pfpr_yearly)) {
+          msg <- sprintf("Cannot find year %d in %s", year,
+                             paste0(names(pfpr_yearly), collapse = ","))
+          flog.error(msg)
+          stop(msg)
+        }
+        pr_fn <- pfpr_yearly[year_str]
         pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
         if (!file.exists(rampdata::as.path(pfpr_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(pfpr_file))
@@ -491,9 +509,8 @@ load_data <- function(config, pr2ar_version, domain_extent, years) {
             stop(msg)
         }
 
-        am_file <- rampdata::add_path(
-            am_dir,
-            file = paste0(year, ".effective.treatment.tif"))
+        am_fn <- am_yearly[as.character(year)]
+        am_file <- rampdata::add_path(am_dir, file = am_fn)
         if (!file.exists(rampdata::as.path(am_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(am_file))
             flog.error(msg)
@@ -582,6 +599,8 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
     stopifnot(is_tile(blocksize))
     pfpr <- collect_and_permute(data$pfpr)
     am <- collect_and_permute(data$am)
+    stopifnot(length(dim(pfpr)) == 3)
+    stopifnot(length(dim(am)) == 3)
 
     work_cnt <- dim(work)[2]
     pieces <- lapply(1:work_cnt, FUN = function(col) {
@@ -592,8 +611,8 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
         # flog.debug(paste("tile", paste(tile, collapse = ","),
         #     "relative extent", paste(rel, collapse = ","), "\n"
         # ))
-        pfpr_chunk <- pfpr[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"]]
-        am_chunk <- am[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"]]
+        pfpr_chunk <- pfpr[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"], drop = FALSE]
+        am_chunk <- am[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"], drop = FALSE]
         list(tile = tile, pfpr = pfpr_chunk, am = am_chunk)
     })
 
@@ -707,6 +726,7 @@ linearized_work <- function(input_list, run_func) {
     # The arrays are probably three-dimensional.
     not_available <- lapply(input_list, function(check) is.na(check))
     input_dims <- dim(input_list[[1]])
+    stopifnot(length(input_dims) == 3)
     dim_keep <- length(input_dims)
     # If any array has an NA in a position in the array, then that position is
     # thrown out for all input arrays.
@@ -897,6 +917,7 @@ summarize_draws <- function(draws, confidence_percent) {
     draw_cnt <- length(draws)
     array_names <- names(draws[[1]])
     array_dim <- dim(draws[[1]][[1]])
+    stopifnot(length(array_dim) == 3)
     summarized <- lapply(array_names, function(name) {
         var_data <- array(
             do.call(
@@ -916,11 +937,18 @@ summarize_draws <- function(draws, confidence_percent) {
             FUN = function(x) quantile(x, quantiles, na.rm = TRUE)
             )
         quantile_last <- aperm(quantile_first, c(2, 3, 4, 1))
-        list(
-            lower = quantile_last[, , , 1],
-            median = quantile_last[, , , 2],
-            upper = quantile_last[, , , 3]
+        sumd <- list(
+            lower = quantile_last[, , , 1, drop= FALSE],
+            median = quantile_last[, , , 2, drop= FALSE],
+            upper = quantile_last[, , , 3, drop= FALSE]
         )
+        sumd <- lapply(sumd, function(x) {
+            pre_dim <- dim(x)
+            dim(x) <- pre_dim[1:3]
+            x
+        })
+        stopifnot(length(dim(sumd[["median"]])) == 3)
+        sumd
     })
     names(summarized) <- array_names
     flattened <- flatten_draws(summarized)
@@ -1075,7 +1103,7 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
   quantile <- parts[2]
 
   if (kind %in% names(.plot.kinds)) {
-    aplot <- tmap::tm_shape(vc_median) +
+    aplot <- tmap::tm_shape(raster_obj) +
       tmap::tm_raster(
         breaks = .plot.kinds[[kind]]$breaks,
           title = sprintf(
@@ -1086,9 +1114,9 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
         )
       ) +
        tmap::tm_layout(
-        legend.position = c("left", "bottom") 
+        legend.position = c("left", "bottom")
       ) +
-      tmap::tm_shape(admin0lakes) +
+      tmap::tm_shape(admin0) +
       tmap::tm_borders()
     tmap::tmap_save(aplot, filename, asp = 0, height = options$pngheight)
   } else {
@@ -1417,7 +1445,7 @@ funcmain <- function(args) {
         }
     )
     flog.debug("End of parallel work.")
-    stopCluster(cluster)
+    parallel::stopCluster(cluster)
     } else {
     output <- lapply(
         chunks,
@@ -1516,6 +1544,10 @@ save_outputs <- function(chunks_fn, outputs) {
       }  # else it's the block, blockhead.
     }
     tile_name <- sprintf("%d_%d", block["row"], block["col"])
+    flog.debug(sprintf(
+      "save %d chunks to tile %s in file %s",
+      length(chunks), tile_name, chunks_fn
+    ))
     save_chunks(chunks_fn, chunks, group_name = tile_name)
   }
 }
@@ -1636,7 +1668,13 @@ assemble <- function(args) {
   }
 
   ds_names <- read_dataset_names(task_name_fn(1))
-  for (ds_name in ds_names) {
+  # Subset to aeir and rc.
+  #aeir_names <- ds_names[grep("^aeir", ds_names)]
+  #rc_names <- ds_names[grep("^rc", ds_names)]
+  vc_names <-ds_names[grep("^vc", ds_names)]
+  #best_names <- c(rc_names, aeir_names)
+  best_names <- vc_names
+  for (ds_name in best_names) {
     output <- list()
     for (task_idx in 1:args$tasks) {
       more_output <- read_outputs(task_name_fn(task_idx), ds_name)
