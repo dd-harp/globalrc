@@ -1,0 +1,96 @@
+---
+title: "Visualize Global Rc"
+output: html_notebook
+---
+
+
+```{r load_libraries, include = FALSE}
+library(raster)
+library(rprojroot)
+library(rampdata)
+library(sp)
+library(sf)
+library(tmap)
+library(GISTools)
+```
+
+
+
+```{r pick_a_shapefile}
+outline_rp <- ramp_path("/inputs/country_outlines/201122")
+admin0 <- sf::st_read(as.path(add_path(outline_rp, file = "ne_10m_admin_0_countries")))
+admin0lakes <- sf::st_read(as.path(add_path(outline_rp, file = "ne_10m_admin_0_countries_lakes")))
+admin0pop <- sf::st_read(as.path(add_path(outline_rp, file = "ne_10m_populated_places")))
+admin0pop_df <- st_set_geometry(admin0pop, NULL)
+admin0popsimple <- sf::st_read(as.path(add_path(outline_rp, file = "ne_10m_populated_places_simple")))
+admin0popsimple_df <- st_set_geometry(admin0popsimple, NULL)
+```
+
+
+
+```{r}
+admin_max <- admin0pop[admin0pop$SCALERANK < 3,]
+tm_shape(admin0lakes) + tm_borders() + tm_shape(admin_max) + tm_bubbles(size = 0.01)
+```
+
+```{r show_raster}
+raster_rp <- ramp_path("/globalrc/outputs/basicr/201121_split100")
+rc_median <- raster(as.path(add_path(raster_rp, file = "rc_median_2018.tif")))
+vc_median <- raster(as.path(add_path(raster_rp, file = "vc_median_2018.tif")))
+aeir_median <- raster(as.path(add_path(raster_rp, file = "aeir_median_2018.tif")))
+```
+
+```{r}
+aplot <- tm_shape(rc_median) +
+  tm_raster(
+    breaks = c(0.0, 0.5, 1, 2, 5, 10, 100, Inf),
+    title = "Rc Median 2018"
+    ) +
+  tm_layout(
+    legend.position = c("left", "bottom") 
+  ) +
+  tm_shape(admin0lakes) +
+  tm_borders() +
+  tm_shape(admin_max) +
+  tm_bubbles(size = 0.01) +
+  tm_text("NAME", size = 0.5)
+tmap_save(aplot, "rc_median_2018.png", asp = 0, height = 1500)
+aplot
+```
+
+```{r}
+aplot <- tm_shape(aeir_median) +
+  tm_raster(
+    breaks = c(0.0, 0.5, 1, 2, 5, 10, 100, Inf),
+    title = "Annual EIR Median 2018"
+    ) +
+  tm_layout(
+    legend.position = c("left", "bottom") 
+  ) +
+  tm_shape(admin0lakes) +
+  tm_borders() +
+  tm_shape(admin_max) +
+  tm_bubbles(size = 0.01) +
+  tm_text("NAME", size = 0.5)
+tmap_save(aplot, "aeir_median_2018.png", asp = 0, height = 1500)
+aplot
+```
+
+
+```{r}
+aplot <- tmap::tm_shape(vc_median) +
+  tm_raster(
+    breaks = c(0.0, 0.1, 0.5, 1, 5, 10, 100, Inf),
+    title = "Vectorial Capacity Median 2018"
+    ) +
+  tm_layout(
+    legend.position = c("left", "bottom") 
+  ) +
+  tm_shape(admin0lakes) +
+  tm_borders() +
+  tm_shape(admin_max) +
+  tm_bubbles(size = 0.01) +
+  tm_text("NAME", size = 0.5)
+tmap_save(aplot, "vc_median_2018.png", asp = 0, height = 1500)
+aplot
+```

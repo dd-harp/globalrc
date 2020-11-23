@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.png
+*.pdf
+*.xml
+*.tif
+*.tif.aux.xml
+*.csv
+*.h5
+images/
+notebooks/*.md
+notebooks/*.tex
+*.nb.html

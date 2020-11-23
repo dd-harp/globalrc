@@ -1,0 +1,622 @@
+---
+title: "Global Rc"
+output: html_notebook
+---
+
+# Introduction
+
+We need to work with the function that derives an R_c from PfPR and
+treatment. The function that does the core of the calculation is
+in the `rc_kappa.R` file, so we will source that file and work with
+the function on test data.
+
+## Goals
+
+1. Deliver $R_c$ for multiple draws of parameters (specifically, $k$ in the EIR),
+   as a median surface, with C.I. bounds, so three surfaces.
+  
+## Steps
+
+1. Calculate EIR directly from PfPR using a fit. It's a parametrized log-linear
+   fit, so this means making a csv with the numbers and uncertainty.
+   
+2. Calculate effect of case management by computing a shift.
+   
+   1. The shift is, shift(pr, rho) = pr2ar(pr, 0) - pr2ar(pr, rho).
+   2. Apply that shift to alpha, as back-calculated from EIR, to FOI, to alpha. Then forward-calculate
+      to get a new EIR.
+
+3. More steps to tune equations. For instance, what's the constant
+   for rho = k_am * am?
+
+4. Modify $r$ in $D=c/r$ by the AM.
+
+5. Use a cutoff (PR<0.10, EIR<0.5) to choose when to switch to a low-intensity set
+   of equations. Write down those equations.
+   
+6. Change the `rc_kappa.R` code to work over draws of parameters and save
+   median and C.I. surfaces.
+
+7. Run with draws. Do a test patch to gauge speed, then run.
+
+```{r load_libraries}
+library(akima)
+library(dplyr)
+library(futile.logger)
+library(plotrix)
+library(pracma)  # "practical math" alternative interpolation.
+library(rprojroot)
+library(viridis)
+invisible(flog.threshold(INFO))  # Set to DEBUG if you want to see messages.
+```
+
+```{r plot_set_up}
+make_colors <- function() {
+  col <- viridis::plasma(7, alpha = 1, begin = 0, end = 1)
+  c(pfpr = col[1], am = col[2], alpha = col[3], kappa = col[4], aeir = col[5],
+       vc = col[6], rc = col[7])
+}
+mcol <- make_colors()
+var_names <- c("alpha", "kappa", "aeir", "vc", "rc")
+var_colors <- mcol[var_names]
+```
+
+## Initialization
+
+Austin made a map from PR and rho to AR. We will use that function,
+so load the data he calculated, and create an interpolation function.
+```{r read_script}
+# The Akima interpolation is meant to interpolate from one grid to another.
+# Our destination points aren't a grid, so it's the wrong one to use.
+# It's OK for a single point, though, so can use it for checking the other one.
+ar_of_pr_rho2 <- function(pr_to_ar_dt) {
+    dt <- pr_to_ar_dt
+    function(pr, rho) {
+        akima::interp(x = dt$rho, y = dt$PR, z = dt$AR, xo = rho, yo = pr,
+        extrap = TRUE)[[3]]
+    }
+}
+ar_of_pr_rho <- function(pr_to_ar_dt) {
+  if (length(unique(pr_to_ar_dt$rho[1:5])) < 5) {
+    flog.debug("PR moves faster in pr_to_ar mesh file.")
+    dtrow <- sort(unique(pr_to_ar_dt$PR))
+    dtcol <- sort(unique(pr_to_ar_dt$rho))
+    dtz <- array(pr_to_ar_dt$AR, dim = c(length(dtrow), length(dtcol)))
+    function(pr, rho) {
+      # This call looks like x and y are mixed up, but check the tests below.
+      pracma::interp2(dtcol, dtrow, dtz, xp = rho, yp = pr, method = "linear")
+    }
+  } else {
+    flog.debug("rho moves faster in pr_to_ar mesh file.")
+    dtrow <- sort(unique(pr_to_ar_dt$rho))
+    dtcol <- sort(unique(pr_to_ar_dt$PR))
+    dtz <- array(pr_to_ar_dt$AR, dim = c(length(dtrow), length(dtcol)))
+    function(pr, rho) {
+      pracma::interp2(dtcol, dtrow, dtz, xp = pr, yp = rho, method = "linear")
+    }
+  }
+}
+# Load the data that Austin made, turning it into a function.
+local_pr2ar <- "pr2ar_mesh.csv"
+if (!file.exists(local_pr2ar)) {
+  local_pr2ar <- file.path("..", local_pr2ar)
+  flog.debug("looking for pr2ar up a directory", local_pr2ar)
+}
+pr_to_ar_dt <- data.table::fread(local_pr2ar)
+pr_to_ar <- ar_of_pr_rho(pr_to_ar_dt)
+for (test_line in c(5, 20, 42)) {
+  egval <- pr_to_ar_dt[5]
+  relerr <- (pr_to_ar(egval$PR, egval$rho) - egval$AR) / egval$AR
+  stopifnot(relerr < 0.01)
+}
+params <- list(
+  kam = 0.6,  # multiplier by am to get rho
+  b = 0.55,
+  b_shape1 = 55,
+  b_shape2 = 45,
+  c = 0.17,
+  k = 4.2,
+  kd = 0.5,  # quantile for draw of k.
+  r = 0.005,  # recovery without treatment
+  r_sd = 0.0003333333,  # 1/3000
+  tau = 10,  # time step days for FOI
+  D_low = 5,  # days with treatment
+  D_high = 40,  # days without treatment
+  random_seed = 24243299,
+  confidence_percent = 95
+  )
+show_df <- data.frame(params)
+params$pr_to_ar <- pr_to_ar
+show_df
+```
+
+Will the pr2ar data work for getting pr from ar from rho=0?
+```{r ar2pr_same_data}
+zero_row <- pr_to_ar_dt[rho < 1e-6,c("PR", "AR")]
+plot(zero_row$AR, zero_row$PR)
+```
+```{r interp_zero_row}
+attack_rates <- c(0, 1e-4, 0.015, 0.3, 0.5, 0.4, 0.937,max(zero_row$AR)+1e-4, 0.99)
+make_ar2pr <- function(pr_ar_data) {
+  no_treatment <- pr_ar_data[rho < 1e-6, c("PR", "AR")]
+  # The sample data doesn't go all the way to 0 and 1, but that's the asymptotic value.
+  AR_sample <- c(0, no_treatment$AR, 1)
+  PR_sample <- c(0, no_treatment$PR, 1)
+  function(attack_rates) {
+    pracma::interp1(AR_sample, PR_sample, attack_rates, method = "linear")
+  }
+}
+params$ar2pr <- make_ar2pr(pr_to_ar_dt)
+xar <- seq(0.01, 0.99, 0.01)
+plot(xar, params$ar2pr(xar), log = "x")
+```
+
+If we use Cronus to ask what PfPR would be without treatment, what does
+it say for different levels of treatment?
+```{r adjusted_pr}
+untreat_pfpr <- function(pfpr, rho) {
+    alpha_cronus <- pr_to_ar(pfpr, rho)
+    params$ar2pr(alpha_cronus)
+}
+plot(
+  numeric(0), numeric(0), xlim = c(0, 1), ylim = c(0, 1),
+  xlab = "PfPR", ylab = "Putative Untreated PfPR",
+  main = "Putative Untreated PfPR to PfPR"
+  )
+pfpr <- seq(0.01, 0.99, 0.01)
+am_vals <- c(0, 0.02, 0.1, 0.3, 0.6) / params$kam
+amcol <-   col <- viridis::plasma(length(am_vals), alpha = 1, begin = 0, end = 1)
+for (am_idx in seq_along(am_vals)) {
+  am0 <- am_vals[am_idx]
+
+  am <- rep(am0, length(pfpr))
+  lines(pfpr, untreat_pfpr(pfpr, am), col = amcol[am_idx])
+}
+legend("bottomright", legend = as.character(am_vals),
+       col = amcol[1:length(am_vals)], lty = 1, lwd = 2, cex = 1,
+       title = "Rho Values")
+```
+```{r difference_in_treated_untreated}
+plot(
+  numeric(0), numeric(0), xlim = c(0, 1), ylim = c(0, 0.3),
+  xlab = "PfPR", ylab = "Addition to PfPR",
+  main = "Difference in Treated and Untreated PfPR"
+  )
+pfpr <- seq(0.01, 0.99, 0.01)
+rho_vals <- seq(0, 0.8, 0.2)
+rhocol <-   col <- viridis::plasma(length(rho_vals), alpha = 1, begin = 0, end = 1)
+for (rho_idx in seq_along(rho_vals)) {
+  rho0 <- rho_vals[rho_idx]
+
+  rho <- rep(rho0, length(pfpr))
+  diff <- untreat_pfpr(pfpr, rho) - pfpr
+  lines(pfpr, diff, col = rhocol[rho_idx])
+}
+legend("topright", legend = sprintf("%3.2f", rho_vals),
+       col = rhocol[1:length(rho_vals)], lty = 1, lwd = 2, cex = 1,
+       title = "Rho Values")
+```
+
+
+## The main function
+
+```{r pr2eir_fit}
+# Functional form. This could be EIR around home, "local EIR".
+# Returns daily EIR. Multiply by 365 for annual.
+pr2eir=function(x, b=0.55, r=1/200, k=4.2){
+  ((1-x)^-k-1)*(r/k/b)
+}
+# Same, but with random parameters.
+# deir = daily EIR. aeir = annual. leir = log(annual EIR).
+pr2eirS = function(x, n=1){
+  pr = rep(x, each=n)
+  r = rnorm(length(pr), 1/200, 1/3000)
+  k = rgamma(length(pr), 4.2*(1-pr)^.6*5, 5*(1-pr)^.6)
+  b = rbeta(length(pr), .55*100, .45*100)
+  eir = pmin(((1-pr)^-k-1)*(r/k/b), 1500/365)
+  cbind(pr=pr, deir=eir, aeir=eir*365, leir = log10(eir*365))
+}
+# log-linear. This is "total EIR."
+# Annual EIR.
+pr2eir.llin = function(x){
+  leir = -0.262776 + 3.213*x
+  eir = 10^leir
+  cbind(pr=x, logeir = leir, eir=eir)
+}
+pr2eir.llinS = function(x, n=1){
+  pr = rep(x, each=n)
+  leir = -0.262776 + 3.213*pr + rnorm(length(pr),0,.53)
+  eir = 10^leir
+  cbind(pr=pr, logeir = leir, eir=eir)
+}
+show_pr2eir <- function() {
+  x <- seq(0.01, 0.99, 0.01)
+  plot(
+    x, pr2eir(x),
+    xlim = c(0, 0.98), log = "y", ylab = "PfEIR", xlab = "PfPR",
+    main = "pr2eir function"
+    )
+}
+show_pr2eir()
+```
+```{r from_pr_to_eir}
+pfpr <- seq(0.01, 0.99, 0.01)
+eir <- with(params, pmin(365*pr2eir(pfpr, b, r, k), rep(1500, length(pfpr))))
+plot(pfpr, eir, main = "Yearly PfEIR with a Cutoff at Max Ever Seen",
+     type = "l", log = "y", yaxt = "n")
+order_labels <- c("0.1", "1.0", "10", "100", "1000")
+axis(2, at = as.numeric(order_labels), labels = order_labels)
+```
+Check that our equations from eir to alpha and back to eir are correct.
+```{r the_way_from_eir_to_alpha_and_back}
+eir_nt <- 10
+eir <- with(params, {
+#alpha_nt <- 1 - exp(-log(1 + eir_nt * k * tau) / k)
+h_tau <- log(eir_nt *  (b * k * tau) + 1) / k
+alpha_nt <- 1 - exp(-h_tau)
+alpha_nt <- 1 - (eir_nt * b * k * tau + 1)^(-1/k)
+h <- -log(1 - alpha_nt) / tau
+# h <- log(eir_nt * b * k * tau + 1) / (k * tau)
+(exp(h * k * tau) - 1) / (b * k * tau)
+})
+c(eir_nt, eir)
+```
+
+
+I'll copy the main function here so we can work with it.
+```{r pixel_work_copy}
+kappa_rm <- function(pfpr, c) { c * pfpr }
+alpha_cronus <- function(pfpr, k, rho, tau) pr_to_ar(pfpr, rho)
+alpha_from_eir <- function(pfpr, k, rho, tau) {
+  eir <- pr2eir(pfpr, b, r, k)
+  alpha <- 1 - (eir_nt * b * k * tau + 1)^(-1/k)
+  alpha + pr_to_ar(pfpr, rho) - pr_to_ar(pfpr, 0)
+}
+rc_basic <- function(b, c, r, V, am) { b * V * c / r }
+strategies <- list(
+  alphaf = alpha_from_eir, kappaf = kappa_rm, rcf = rc_basic, ar2pr = make_ar2pr(pr_to_ar_dt),
+  pr_to_ar = pr_to_ar
+  )
+
+pixel_try <- function(pfpr, am, params, strategies) {
+  # PfPR and AM come in with the same set of NA patterns, where there is no land.
+  with(c(params, strategies), {
+    alpha <- alphaf(pfpr, k, kam * am, tau)
+    kappa <- kappaf(pfpr, c)
+    h <- -log(1 - alpha) / tau
+    eir <- (exp(h * k * tau) - 1) / (b * k * tau)
+    V <- eir / kappa
+    R <- rcf(b, c, r, V, am)
+    list(
+      alpha = alpha,
+      kappa = kappa,
+      deir = eir,
+      vc = V,
+      rc = R
+    )
+  })
+}
+# Here, we don't worry about the strategies. Write everything out where
+# we can see it.
+pixel_two <- function(pfpr, am, params, strategies) {
+  # PfPR and AM come in with the same set of NA patterns, where there is no land.
+  with(c(params, strategies), {
+    rho <- kam * am
+    kd <- qgamma(params$ku, k * (1 - pfpr)^.6 * 5, 5 * (1 - pfpr)^.6)
+    # We aren't using the mechanistic model to get an absolute value of alpha
+    # because that alpha isn't close enough. We are using that model to
+    # estimate how much treatment would shift PfPR, given an alpha.
+    alpha_cronus <- pr_to_ar(pfpr, rho)
+    # nt = no_treatment
+    pfpr_nt <- ar2pr(alpha_cronus)
+    # This EIR estimate is from a fit to data.
+    max_deir <- 1500 / 365
+    eir_nt <- pmin(
+      pr2eir(pfpr_nt, b, r, kd),
+      rep(Inf, length(pfpr_nt))
+      )
+    alpha_nt <- 1 - (eir_nt * b * kd * tau + 1)^(-1/kd)
+    # Then go back and estimate how much treatment would mean alpha was higher.
+    lower_ar <- pr_to_ar(pfpr, numeric(length(pfpr)))
+    upper_ar <- pr_to_ar(pfpr, rho)
+    # Move it the same relative distance to the upper bound.
+    alpha <- 1 - (1 - alpha_nt) * (1 - upper_ar) / (1 - lower_ar)
+
+    kappa <- c * pfpr_nt
+    h <- -log(1 - alpha) / tau
+    # alpha can be 1 after the shift, so cap FOI.
+    # These will be infinite, and that's OK. We don't
+    # get rid of NAN. Those are failures.
+    max_finite <- 1e10
+    h[h > max_finite] <- max_finite
+    eir <- (exp(h * kd * tau) - 1) / (b * kd * tau)
+    eir[eir > max_finite] <- max_finite
+    V <- ifelse(
+        kappa > 0,
+        eir / kappa,
+        0
+    )
+    V[V > max_finite] <- max_finite
+    R <- b * V * c * ((1 - rho) * D_high + rho * D_low)
+    R[R > max_finite] <- max_finite
+    list(
+      alpha = alpha,
+      kappa = kappa,
+      foi = h,
+      # deir = daily eir, aeir = annual eir = 365 * deir.
+      aeir = eir * 365,
+      vc = V,
+      rc = R
+    )
+  })
+}
+```
+
+The parameters should be drawn from a distribution. So you take params,
+as defined above, and put them into here to get the draws.
+```{r parameters_as_draws}
+#' Takes a parameter that is an expression (of drawing a distribution) and calls it.
+draw_parameters <- function(parameters, N) {
+    if (N > 1) {
+        draw_params <- with(parameters, {
+            data.frame(
+                kam = rep(kam, N),
+                r = rnorm(N, r, r_sd),
+                k = k,
+                ku = runif(N),  # Use as quantile within calculation.
+                b = rbeta(N, b, b_shape1, b_shape2),
+                c = rep(c, N),
+                tau = rep(tau, N),
+                D_low = rep(D_low, N),
+                D_high = rep(D_high, N)
+            )
+        })
+    } else {
+        draw_params <- data.frame(
+            kam = kam,
+            r = r,
+            k = k,  # mean for k calculation.
+            ku = 0.5,  # Use as quantile within calculation.
+            b = b,
+            c = c,
+            tau = tau,
+            D_low = D_low,
+            D_high = D_high
+        )
+    }
+    # If any parameters are less than zero, we should redraw.
+    # It's a rejection method to get truncated distributions.
+    stopifnot(all(as.matrix(draw_params) > 0))
+    draw_params
+}
+```
+
+
+Make a table of values with the draws.
+```{r table_with_draws}
+pfpr <- seq(0.1, 0.5, 0.1)
+rho <- seq(0, 0.5, 0.1)
+df <- data.frame(list(pfpr = rep(pfpr, length(rho)), rho = rep(rho, each = length(pfpr))))
+df$am <- df$rho / params$kam
+sample_cnt <- nrow(df)
+draw_cnt <- 3
+draw_params <- draw_parameters(params, 3)
+
+over_draws <- lapply(1:draw_cnt, function(draw_idx) {
+  pixel_two(df$pfpr, df$am, draw_params[draw_idx, ], strategies)
+})
+var_names <- names(over_draws[[1]])
+for (single_var in "rc") {
+  single_arr <- vapply(over_draws, function(one_draw) {
+    one_draw[[single_var]]
+  }, FUN.VALUE = numeric(sample_cnt))
+  dim(single_arr)
+  single_summary <- list(
+    mean = apply(single_arr, c(1), mean),
+    median = apply(single_arr, c(1), function(x) quantile(x, 0.5)),
+    lower = apply(single_arr, c(1), function(x) quantile(x, 0.025)),
+    upper = apply(single_arr, c(1), function(x) quantile(x, 0.975))
+  )
+  names(single_summary) <- sprintf("%s_%s", single_var, names(single_summary))
+  df <- cbind(df, single_summary)
+}
+data.table::fwrite(df, file = "summary_median_rc.csv")
+df
+```
+
+
+
+How about making a table of values.
+```{r create_table_of_values}
+pfpr <- c(0.01, 0.1, 0.2, 0.3, 0.4, 0.8)
+am <- c(0.00, 0.02, 0.3, 0.6)
+df <- data.frame(list(pfpr = rep(pfpr, length(am)), am = rep(am, each = length(pfpr))))
+res <- vapply(
+  1:nrow(df),
+  function(row) {
+    ll <- pixel_two(df$pfpr[row], df$am[row], params, strategies)
+    setNames(as.numeric(ll), names(ll))
+    },
+  FUN.VALUE = numeric(8)
+  )
+cbind(df, t(res))
+```
+
+
+```{r inset_rc, eval = FALSE}
+inset_rc <- function(pfpr, rc) {
+  u <- par("usr")
+  v <- c(
+    grconvertX(u[1:2], "user", "ndc"),
+    grconvertY(u[3:4], "user", "ndc")
+  )
+  v <- c( (v[1]+v[2])/2, v[2], (v[3]+v[4])/2, v[4] )
+  par( fig=v, new=TRUE, mar=c(0,0,0,0) )
+  plot(pfpr, rc, axes=TRUE, xlab="", ylab="")
+  box()
+}
+```
+
+Plot annual EIR (i.e. multiply daily EIR by 365) vs PR, and plot on a log10 scale.
+```{r annual_eir, fig.height = 5, fig.width = 10}
+pfpr <- seq(0.01, 0.99, 0.01)
+par(mfrow = c(2, 2))
+for (am0 in c(0.0, 0.01, 0.1, 0.3)) {
+am <- rep(am0, length(pfpr))
+k_is_one <- function(p) {
+  p$kam <- 1.0
+  p
+  }
+vars <- pixel_two(pfpr, am, k_is_one(params), strategies)
+plot(
+  vars$aeir, pfpr,
+  main = sprintf("rho = %3.2f", am0), xlab = "EIR [annual log10]", ylab = "PfPR",
+  log = "x", type = "l", col = var_colors["aeir"]
+)
+}
+```
+
+```{r annual_eir_shift, fig.height = 5, fig.width = 7}
+pfpr <- seq(0.01, 0.99, 0.01)
+k_is_one <- function(p) {
+  p$kam <- 1.0
+  p
+  }
+#par(mfrow = c(1, 2))
+amcol <- viridis::plasma(7, alpha = 1, begin = 0, end = 1)
+am0 <- 0.0
+am <- rep(am0, length(pfpr))
+plot(
+  numeric(0), numeric(0),
+  xlim = c(1e-2, 1e10), ylim = c(0, 1),
+  main = sprintf("Comparing across rho values for whole model", am0),
+  xlab = "PfEIR [annual log10]", ylab = "PfPR",
+  log = "x", type = "l"
+)
+amchoices <- seq(0, .6, 0.1)
+for (am_idx in seq_along(amchoices)) {
+  am0 <- amchoices[am_idx]
+am <- rep(am0, length(pfpr))
+vars <- pixel_two(pfpr, am, k_is_one(params), strategies)
+lines(
+  vars$aeir, pfpr,
+  col = amcol[am_idx]
+)
+}
+legend(
+  "bottomright", legend = as.character(amchoices), title = "rho",
+  col = amcol[1:length(amchoices)], lty = 1, lwd = 2, cex = 1)
+```
+```{r variable_by_variable, fig.height = 10, fig.width = 20}
+cnt <- 200
+pfpr <- 1:cnt/(cnt + 1)
+run_one <- function(am) pixel_two(pfpr, rep(am, length(pfpr)), params, strategies)
+var_names <- names(run_one(0.1))
+
+flip <- TRUE
+par(mfrow = c(2,4))
+am_choices <- rev(seq(0, 0.6, 0.1))
+vbv_col <- rev(viridis::plasma(length(am_choices), alpha = 1, begin = 0, end = 1))
+for (var_name in var_names) {
+  for (am_idx in seq_along(am_choices)) {
+    am0 <- am_choices[am_idx]
+    res <- run_one(am0)
+    vary <- res[[var_name]]
+    if (flip) {
+      y <- pfpr
+      x <- vary
+      logv <- "x"
+      xlab <- var_name
+      ylab <- "PfPR"
+    } else {
+      x <- pfpr
+      y <- vary
+      logv <- "y"
+      xlab <- "PfPR"
+      ylab <- var_name
+    }
+    if (am_idx == 1) {
+      plot(
+        x, y,
+        log = logv, xlab = xlab,
+        ylab = ylab, col = vbv_col[am_idx], type = "l")
+    } else {
+      lines(x, y, type = "l", col = vbv_col[am_idx])
+    }
+  }
+  legend("topleft", legend = sprintf("AM=%3.2f", am_choices), col = vbv_col, lty = 1, lwd = 2, cex = 1)
+}
+```
+```{r}
+alpha <- seq(0.01, 0.99, 0.01)
+h <- -log(1 - alpha)
+plot(alpha, h)
+```
+
+
+Let's try a range of PfPR for one AM.
+```{r plot_pfpr_for_an_am, fig.height = 20, fig.width = 10}
+cnt <- 200
+
+par(mfrow = c(3,1))
+for (am0 in c(0.0, 0.1, 0.5)) {
+  pfpr <- 1:cnt/(cnt + 1)
+  am <- rep(am0, length(pfpr))
+  res <- pixel_two(pfpr, am, params, strategies)
+  name <- "alpha"
+  plot(
+    pfpr, res[[name]],
+    xlim = c(0, 1), ylim = c(1e-3, 1e3), log = "y", xlab = "PfPR",
+    main = sprintf("AM=%3.2f", am0), ylab = "", col = mcol[name], type = "l")
+  not_alpha <- names(res)[!names(res) %in% name]
+  for (name in not_alpha) {
+    lines(pfpr, res[[name]], type = "l", main = name, ylab = "", col = mcol[name])
+  }
+  legend("topleft", legend = var_names, col = var_colors, lty = 1, lwd = 2, cex = 1)
+}
+```
+## Testing
+
+```{r test_ar_to_pr_interpolation}
+library(testthat)
+test_that("rho faster matches", {
+  # Using different bounds means we can check that x and y aren't switched.
+  rho_grid <- pracma::linspace(-1, 1, 11)
+  pr_grid <- pracma::linspace(0, 1, 20)
+  testf <- function(x, y) { sin(x) + 2 * cos(y) }
+  rho_in <- rep(rho_grid, length(pr_grid))
+  pr_in <- rep(pr_grid, each = length(rho_grid))
+  zi <- testf(rho_in, pr_in)
+  trialf <- ar_of_pr_rho(data.frame(list(rho = rho_in, PR = pr_in, AR = zi)))
+  rhot <- c(-0.5, 0.9, -0.1)
+  prt <- c(0.9, 0.8, 0.1)
+  zt <- trialf(rhot, prt)
+  expect_equal(length(zt), length(rhot))
+  zpred <- testf(rhot, prt)
+  expect_lt(max(abs(zt - zpred)), 0.01)
+})
+test_that("pr faster matches", {
+  # The loop says that as grid gets finer answer gets closer.
+  max_miss <- 0.01
+  for (i in 0:3) {
+    rho_grid <- pracma::linspace(-1, 1, 11 * 2^i)
+    pr_grid <- pracma::linspace(0, 1, 20 * 2^i)
+    testf <- function(x, y) { sin(x) + 2 * cos(y) }
+    pr_in <- rep(pr_grid, length(rho_grid))
+    rho_in <- rep(rho_grid, each = length(pr_grid))
+    zi <- testf(rho_in, pr_in)
+    trialf <- ar_of_pr_rho(data.frame(list(rho = rho_in, PR = pr_in, AR = zi)))
+    rhot <- c(-0.5, 0.9, -0.1)
+    prt <- c(0.9, 0.8, 0.1)
+    zt <- trialf(rhot, prt)
+    expect_equal(length(zt), length(rhot))
+    zpred <- testf(rhot, prt)
+    this_miss <- max(abs(zt - zpred))
+    # Ask that convergence be better than linear.
+    expect_lt(this_miss, max_miss / 2)
+    max_miss <- this_miss
+    flog.debug(this_miss)
+  }
+})
+```
+
