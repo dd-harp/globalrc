@@ -6,35 +6,6 @@ alpha_from_eir <- function(eir, pfpr, rho) {
 }
 rc_basic <- function(b, c, r, V, am) { b * V * c / r }
 
-#' Compute the results of analyzing a time series of PfPR and AM.
-#' @param pfpr A numeric vector of PR. Length is number of time points.
-#' @param am A numeric vector of case management measure. Length is number of time points.
-#' @param pr2ar A function that gives AR from PR and rho.
-#' @param params Other parameters for the calculation in a list.
-#' @return A list where each variable has results for the time series
-#'     as a vector of numeric. The entries are `alpha`, `kappa`, `eir`, `vc`, `rc`.
-#'
-#' The parameters passed into this function are defined in the config
-#' file, whose default name is `rc_kappa.toml`, in the `[parameters]` section.
-pixel_work <- function(pfpr, am, params, strategies) {
-  # PfPR and AM come in with the same set of NA patterns, where there is no land.
-  with(c(params, strategies), {
-    alpha <- pr_to_ar(pfpr, kam * am)
-    kappa <- kappaf(pfpr, c)
-    h <- -log(1 - alpha) / tau
-    eir <- (exp(h * k * tau) - 1) / (b * k * tau)
-    V <- eir / kappa
-    R <- rcf(b, c, r, V, am)
-    list(
-      alpha = alpha,
-      kappa = kappa,
-      eir = eir * 365,
-      vc = V,
-      rc = R
-    )
-  })
-}
-
 
 pr2eir=function(x, b=0.55, r=1/200, k=4.2){
   ((1-x)^-k-1)*(r/k/b)

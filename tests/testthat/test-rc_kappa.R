@@ -182,13 +182,16 @@ test_that("prepare_timeseries", {
 })
 
 
-.default.params <- list(kam = 0.6, b = 0.55, c = 0.17, k = 40, r = 0.005, tau = 10)
+.default.params <- list(
+    kam = 0.6, b = 0.55, c = 0.17, k = 40, r = 0.005, tau = 10,
+    ku = 0.5, D_low = 5, D_high = 40
+    )
 .default.strategies <- list(kappaf = kappa_rm, rcf = rc_basic)
 # Make a fake mesh by pinning down the four corners.
 .pr2ar.mesh <- data.table::data.table(
         PR = c(0.0, 0.0, 1.0, 1.0),
         rho = c(0.0, 1.0, 0.0, 1.0),
-        AR = c(0.0, 0.0, 0.7, 0.99)
+        AR = c(0.0, 0.1, 1.0, 1.0)
     )
 
 
@@ -259,12 +262,22 @@ test_that("pixel_work works", {
     am <- c(0.66, 0.6, 0.4, 0.2, 0.0)
     pr2ar <- ar_of_pr_rho(.pr2ar.mesh)
     .default.strategies$pr_to_ar <- pr2ar
-    results <- pixel_work(pfpr, am, .default.params, .default.strategies)
-    for (var in c("alpha", "kappa", "eir", "vc", "rc")) {
+    stopifnot("rho" %in% names(.pr2ar.mesh))
+    ar2pr_data <- data.table::data.table(
+        rho = c(0, 0),
+        AR = c(0.01, 0.9),
+        PR = c(0.01, 0.9)
+    )
+    .default.strategies$ar2pr <- build_ar2pr(ar2pr_data)
+    results <- pixel_two(pfpr, am, .default.params, .default.strategies)
+    # There will be some variables.
+    expect_gt(length(results), 2)
+    for (var in names(results)) {
         expect_equal(length(results[[var]]), length(pfpr))
         expect_true(all(!is.na(results[[var]])))
     }
 })
+
 
 test_that("draw_parameters can be used in a with statement", {
     params <- list(r = 0.005, r_sd = 1/3000, b = 0.55, b_shape1 = 55,
@@ -435,10 +448,10 @@ test_that("my_tasks ok with too few", {
 })
 
 
-mt_cnt <- 20
+mt_cnt <- 5
 row_cnt <- sample(1:100, mt_cnt, replace = TRUE)
 task_cnt <- sample(1:100, mt_cnt, replace = TRUE)
-for (mt_idx in 1:20) {
+for (mt_idx in 1:mt_cnt) {
     test_that(sprintf("my_tasks always gets all parts %d", mt_idx), {
         work <- data.table::data.table(
             row = 1:row_cnt[mt_idx],
