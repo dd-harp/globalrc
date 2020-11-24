@@ -42,5 +42,4 @@
 #' @name globalrc
 #' @import futile.logger
 #' @import data.table
-#' @importFrom foreach %dopar% %do%
 NULL
