@@ -41,4 +41,5 @@
 #' @docType package
 #' @name globalrc
 #' @import futile.logger
+#' @import data.table
 NULL
