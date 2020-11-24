@@ -149,10 +149,11 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
 #' Given outputs for a tile, write them to a folder.
 #' @param output A list of results.
 #' @param years Years that will save.
+#' @param domain_dimensions Resolution of the raster and bounds in lat-long.
 #' @param domain_extent Bounds and resolution of the raster.
 #' @param args Command-line arguments that have been parsed.
 #' @param options Settings from the toml file.
-write_output <- function(output, years, domain_extent, args, options) {
+write_output <- function(output, years, domain_dimensions, domain_extent, args, options) {
     flog.debug(paste("writing output", sum(is.na(output[[1]])),
         "na values in first array and",
         sum(output[[1]] > 0 & output[[1]] < 1, na.rm = TRUE),
@@ -164,6 +165,10 @@ write_output <- function(output, years, domain_extent, args, options) {
         outline_rp, file = "ne_10m_admin_0_countries_lakes")))})
 
     dest_dir <- build_outvars_dir(args$outvars)
+    # The data could be larger than the domain because the tiles don't fit evenly.
+    # This is where we cut it down.
+    row_cnt <- unname(domain_extent["rmax"] - domain_extent["rmin"] + 1)
+    col_cnt <- unname(domain_extent["cmax"] - domain_extent["cmin"] + 1)
     for (name in names(output)) {
         if (!name %in% names(output)) {
             msg <- paste("output doesn't have the", name, "array")
@@ -171,12 +176,12 @@ write_output <- function(output, years, domain_extent, args, options) {
             stop(msg)
         }
         by_year <- aperm(output[[name]], c(2, 3, 1))
-        dm <- dim(by_year)[1:2]
         for (year_idx in 1:length(years)) {
             year <- years[year_idx]
             out_rp <- rampdata::add_path(dest_dir, file = paste0(name, "_", year, ".tif"))
             # XXX I'm worried that this should be transposed.
-            ready_data <- by_year[, , year_idx]
+            tile_sized_data <- by_year[, , year_idx]
+            ready_data <- tile_sized_data[1:row_cnt, 1:col_cnt]
             out_fn <- rampdata::as.path(out_rp)
             exists <- file.exists(out_fn)
             if (exists & args$overwrite) {
@@ -186,12 +191,12 @@ write_output <- function(output, years, domain_extent, args, options) {
             if (!exists) {
                 flog.info(paste("writing file", out_fn))
                 raster_obj <- raster::raster(
-                    nrows = dm[1], ncols = dm[2],
-                    xmn = domain_extent$xmin,
-                    xmx = domain_extent$xmax,  # columns are x for raster.
-                    ymn = domain_extent$ymin,
-                    ymx = domain_extent$ymax,
-                    crs = domain_extent$projection
+                    nrows = row_cnt, ncols = col_cnt,
+                    xmn = domain_dimensions$xmin,
+                    xmx = domain_dimensions$xmax,  # columns are x for raster.
+                    ymn = domain_dimensions$ymin,
+                    ymx = domain_dimensions$ymax,
+                    crs = domain_dimensions$projection
                 )
                 raster_obj <- raster::setValues(raster_obj, ready_data)
                 raster::writeRaster(raster_obj, filename = out_fn, format = "GTiff")

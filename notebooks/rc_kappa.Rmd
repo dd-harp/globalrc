@@ -98,6 +98,7 @@ ar_of_pr_rho <- function(pr_to_ar_dt) {
 }
 # Load the data that Austin made, turning it into a function.
 local_pr2ar <- "pr2ar_mesh.csv"
+local_pr2ar <- "~/data/projects/globalrc/outputs/pr2ar_mesh/201105/pr2ar_mesh.csv"
 if (!file.exists(local_pr2ar)) {
   local_pr2ar <- file.path("..", local_pr2ar)
   flog.debug("looking for pr2ar up a directory", local_pr2ar)
@@ -116,7 +117,7 @@ params <- list(
   b_shape2 = 45,
   c = 0.17,
   k = 4.2,
-  kd = 0.5,  # quantile for draw of k.
+  ku = 0.5, # quantile of draw
   r = 0.005,  # recovery without treatment
   r_sd = 0.0003333333,  # 1/3000
   tau = 10,  # time step days for FOI
@@ -337,7 +338,7 @@ pixel_two <- function(pfpr, am, params, strategies) {
         0
     )
     V[V > max_finite] <- max_finite
-    R <- b * V * c * ((1 - rho) * D_high + rho * D_low)
+    R <- b * V * ((1 - rho) * D_high + rho * D_low)
     R[R > max_finite] <- max_finite
     list(
       alpha = alpha,
@@ -391,16 +392,28 @@ draw_parameters <- function(parameters, N) {
 }
 ```
 
+```{r}
+set_params <- function(p, ...) {
+  ll <- list(...)
+  p[names(ll)] <- ll
+  p
+}
+params2 <- set_params(params, kam = 0.6)
+data.frame(params2[vapply(params2, is.numeric, logical(1))])
+```
 
-Make a table of values with the draws.
+Make a table of values with the draws. That means we set the two inputs,
+pfpr and rho. Then we generate draws of parameter values, run the function
+against the inputs and parameter values, and summarize the results with
+mean and quantiles.
 ```{r table_with_draws}
-pfpr <- seq(0.1, 0.5, 0.1)
+pfpr <- c(0.05, seq(0.1, 0.5, 0.1))
 rho <- seq(0, 0.5, 0.1)
 df <- data.frame(list(pfpr = rep(pfpr, length(rho)), rho = rep(rho, each = length(pfpr))))
 df$am <- df$rho / params$kam
 sample_cnt <- nrow(df)
-draw_cnt <- 3
-draw_params <- draw_parameters(params, 3)
+draw_cnt <- 10000
+draw_params <- draw_parameters(params2, draw_cnt)
 
 over_draws <- lapply(1:draw_cnt, function(draw_idx) {
   pixel_two(df$pfpr, df$am, draw_params[draw_idx, ], strategies)
@@ -412,6 +425,7 @@ for (single_var in "rc") {
   }, FUN.VALUE = numeric(sample_cnt))
   dim(single_arr)
   single_summary <- list(
+    trimmed = apply(single_arr, c(1), function(x) mean(x, trim = 0.2)),
     mean = apply(single_arr, c(1), mean),
     median = apply(single_arr, c(1), function(x) quantile(x, 0.5)),
     lower = apply(single_arr, c(1), function(x) quantile(x, 0.025)),

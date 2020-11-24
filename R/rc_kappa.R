@@ -169,7 +169,8 @@ funcmain <- function(args) {
 
     # The output chunks need to be reassembled before writing.
     ready_to_write <- combine_output(output, plan$tiles$blocksize)
-    write_output(ready_to_write, args$years, plan$domain_dimensions, args, options)
+    write_output(ready_to_write, args$years, plan$domain_dimensions,
+      plan$domain_extent, args, options)
 }
 
 
@@ -346,6 +347,6 @@ assemble <- function(args) {
     flog.info(sprintf("loaded %d chunks", length(output)))
     # The output chunks need to be reassembled before writing.
     ready_to_write <- combine_output(output, plan$tiles$blocksize, ds_name)
-    write_output(ready_to_write, args$years, plan$domain_dimensions, args, options)
+    write_output(ready_to_write, args$years, plan$domain_dimensions, plan$domain_extent, args, options)
   }
 }

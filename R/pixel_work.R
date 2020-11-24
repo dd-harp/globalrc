@@ -90,7 +90,7 @@ pixel_two <- function(pfpr, am, params, strategies) {
         0
     )
     V[V > max_finite] <- max_finite
-    R <- b * V * c * ((1 - rho) * D_high + rho * D_low)
+    R <- b * V * ((1 - rho) * D_high + rho * D_low)
     R[R > max_finite] <- max_finite
     list(
       alpha = alpha,
