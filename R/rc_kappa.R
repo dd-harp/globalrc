@@ -339,34 +339,34 @@ assemble <- function(args) {
       best_names <- ds_names
   }
 
-  core_cnt <- parallel_core_cnt(args)
-  flog.info(sprintf("using %d cores", core_cnt))
-  # To debug the parallel part, add outfile = "zrc.txt".
-  cl <- parallel::makeCluster(core_cnt, outfile = "zrc.txt")
-  doParallel::registerDoParallel(cl)
-  # These may work better on Windows.
-  # cl <- makeSOCKcluster(core_cnt)
-  # registerDoSNOW(cl)
-
-  foreach::foreach(
-    loop_idx = seq_along(best_names),
-    .packages = c("globalrc")
-    ) %dopar% {
-      ds_name <- best_names[loop_idx]
-      output <- list()
-      # Rampdata keeps the config in package namespace, so that has to be
-      # initialized in the workers.
-      rampdata::initialize_workflow(args$config)
-      for (task_idx in 1:args$tasks) {
-        more_output <- read_outputs(task_name_fn(task_idx), ds_name)
-        output <- c(output, more_output)
+  if (!is.null(args$task)) {
+    if (args$task == 1) {
+      flog.info(sprintf("There are %d variables", length(best_names)))
+    }
+    if (args$task < length(best_names)) {
+      best_names <- best_names[args$task]
+    } else {
+      if (args$task == length(best_names) + 1) {
+        flog.info(sprintf("There are %d variables", length(best_names)))
       }
-      # The output chunks need to be reassembled before writing.
-      ready_to_write <- combine_output(output, plan$tiles$blocksize, ds_name)
-      write_output(
-        ready_to_write, args$years, plan$domain_dimensions, plan$domain_extent, args, options
-        )
+      quit(save = "no", status = 0)
+    }
   }
-  
-  parallel::stopCluster(cl)
+
+  for (loop_idx in seq_along(best_names)) {
+    ds_name <- best_names[loop_idx]
+    output <- list()
+    # Rampdata keeps the config in package namespace, so that has to be
+    # initialized in the workers.
+    rampdata::initialize_workflow(args$config)
+    for (task_idx in 1:args$tasks) {
+      more_output <- read_outputs(task_name_fn(task_idx), ds_name)
+      output <- c(output, more_output)
+    }
+    # The output chunks need to be reassembled before writing.
+    ready_to_write <- combine_output(output, plan$tiles$blocksize, ds_name)
+    write_output(
+      ready_to_write, args$years, plan$domain_dimensions, plan$domain_extent, args, options
+      )
+  }
 }
