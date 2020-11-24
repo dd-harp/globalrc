@@ -191,19 +191,6 @@ test_that("prepare_timeseries", {
         AR = c(0.0, 0.0, 0.7, 0.99)
     )
 
-test_that("over_block_no_series handles structure of parameters", {
-    # The mock output should match the timeseries dimension,
-    # the first dimension of the arrays.
-    didx <- c(4, 2, 3)
-    dcnt <- prod(didx)
-    arr <- array(rep(0.1, dcnt), dim = didx)  # years, rows, cols.
-    chunk <- list(pfpr = arr, am = arr, tile = "anything")
-    pr_to_ar_dt <- .pr2ar.mesh
-    results <- over_block(chunk, .default.params, pr_to_ar_dt)
-    expect_equal(results$block, "anything")
-    expect_equal(dim(results$alpha), didx)
-})
-
 
 test_that("combine_output puts the right results in the right places", {
     blocksize <- c(row = 2, col = 3)
@@ -260,7 +247,7 @@ test_that("ar_of_pr_rho fits the function it should", {
     pr_to_ar <- ar_of_pr_rho(pr_to_ar_dt)
     # Putting a unit test right here. Run every time. Hah.
     for (test_line in c(5, 20, 42)) {
-        egval <- pr_to_ar_dt[5]
+        egval <- pr_to_ar_dt[test_line, ]
         relerr <- (pr_to_ar(egval$PR, egval$rho) - egval$AR) / egval$AR
         expect_lt(relerr, 0.01)
     }

@@ -696,37 +696,6 @@ linearized_work <- function(input_list, run_func) {
 }
 
 
-#' Accumulate the individual time series from a computation that doesn't care about time.
-#' @param chunk A list with pfpr, am, and the tile.
-#' @param parameters A list of parameters for the calculation.
-#' @param pr_to_ar_dt The pr-ar data from the mechanistic model.
-#' @return a list with an entry for each of alpha, kappa, eir, vc, rc.
-#'     It also identifies the source block by block_id.
-#'
-#' If the pixel function doesn't care about time, then there is no
-#' reason to loop over the matrix. Turn the matrix into a single vector
-#' and then do the computation.
-over_block <- function(chunk, parameters, pr_to_ar_dt) {
-    parameters$pr_to_ar <- ar_of_pr_rho(pr_to_ar_dt)
-    parameters$ar2pr <- build_ar2pr(pr_to_ar_dt)
-    strategies <- list(kappaf = kappa_rm, rcf = rc_basic)
-    # The first dimension is the timeseries, so row=2, col=3.
-    run_func <- function(plaquette) {
-        pixel_work(plaquette$pfpr, plaquette$am, parameters, strategies)
-    }
-    only_data <- chunk[names(chunk)[!names(chunk) %in% "tile"]]
-    results <- linearized_work(only_data, run_func)
-    flog.debug(paste("chunk", paste(chunk$tile, collapse = ","),
-        "has", sum(is.na(results$alpha)), "na alpha values and",
-        sum(results$alpha > 0 & results$alpha < 1, na.rm = TRUE),
-        "in 0 < x < 1."
-    ))
-    results[["array_names"]] <- names(results)
-    results[["block"]] <- chunk$tile
-    results
-}
-
-
 #' Takes a parameter that is an expression (of drawing a distribution) and calls it.
 draw_parameters <- function(parameters, N) {
     if (N > 1) {
