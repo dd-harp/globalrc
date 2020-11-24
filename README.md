@@ -47,7 +47,7 @@ and, possibly, draws.
 This code is designed to help us focus on the core science without
 worrying about the software challenges. It does a lot of work,
 in the background, and then calls one function, called
-(pixel_work)[R/pixel_work.R],
+[pixel_work](R/pixel_work.R),
 that does the scientific calculation. That way, we can refine the
 `pixel_work` function in a notebook, explore its behavior, and then
 put it into this package to run it on large datasets with many draws.
