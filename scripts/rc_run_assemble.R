@@ -1,10 +1,6 @@
-if (dir.exists("gen_scaled_ar")) {
-  source(file.path("gen_scaled_ar", "rc_kappa.R"))
-} else {
-  source(file.path(".", "rc_kappa.R"))
-}
+library(globalrc)
 
 flog.threshold(DEBUG)
-improved_errors()
-args <- check_args(arg_parser())
-assemble(args)
+globalrc::improved_errors()
+args <- globalrc::check_args(globalrc::arg_parser())
+globalrc::assemble(args)

@@ -1,6 +1,11 @@
-library(configr)
 
-
+#' Save a plan for parallel execution to a file.
+#' @param plan is a list with some members: `domain_extent`, `domain_dimensions`,
+#'     and a list `list(tiles = list(blocksize))`.
+#' @param plan_file is a filename.
+#'
+#' This uses JSON because the named lists didn't save correctly in
+#' YAML, and TOML requires your having Python installed, so that's out.
 save_plan <- function(plan, plan_file) {
   plan_list <- list(
     domain_extent = as.list(plan$domain_extent),
@@ -18,6 +23,10 @@ save_plan <- function(plan, plan_file) {
 }
 
 
+#' Load the plan that you saved.
+#' @param plan_file The filename containing the plan.
+#'
+#' @seealso \code{\link{save_plan}}
 load_plan <- function(plan_file) {
   plan <- configr::read.config(plan_file)
   domain_extent <- unlist(plan$domain_extent)

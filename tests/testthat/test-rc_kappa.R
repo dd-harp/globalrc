@@ -1,10 +1,4 @@
-source("rc_kappa.R")
-
-if (dir.exists("gen_scaled_ar")) {
-    .default.toml <- file.path("gen_scaled_ar", "rc_kappa.toml")
-} else {
-    .default.toml <- "rc_kappa.toml"
-}
+.default.toml <- system.file("testdata", "rc_kappa.toml", package = "globalrc")
 
 .arg.tests <- list(
     list(a = c("--country=UGA"), b = list(country = "UGA")),
@@ -127,7 +121,7 @@ test_that("raster_extent_from_work calculates larger correctly", {
 
 test_that("load_data loads", {
     test_requires_data()
-    defaults <- arg_parser()
+    defaults <- arg_parser(sprintf("--config=%s", .default.toml))
     domain_extent <- c(rmin = 1L, rmax = 32L, cmin = 65L, cmax = 128L)
     data <- load_data(defaults$config, defaults$pr2ar, domain_extent, 2000:2001)
     expect_equal(data$parameters$b, 0.55)
@@ -229,14 +223,8 @@ test_that("combine_output puts the right results in the right places", {
 
 test_that("chunks going to pixel calc have data", {
     test_requires_data()
-    gen_dir <- "gen_scaled_ar"
-    if (dir.exists(gen_dir)) {
-        rc_kappa <- file.path(gen_dir, "rc_kappa.toml")
-    } else {
-        rc_kappa <- "rc_kappa.toml"
-    }
     args <- check_args(arg_parser(c(
-        paste0("--config=", rc_kappa),
+        paste0("--config=", .default.toml),
         "--country=uga",  # gmb = The Gambia, for a small one. uga = Uganda.
         "--years=2010:2011",
         "--overwrite",

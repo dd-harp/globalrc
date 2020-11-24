@@ -2,7 +2,7 @@
 #' We need to save chunks of arrays, with lots of metadata,
 #' so HDF5 lets us do that and keep everything together,
 #' instead of trying to parse filenames to do it.
-NULL
+
 
 library(futile.logger)
 

@@ -1,72 +1,11 @@
-#' This script reads PfPR and treatment rasters and produces several variables.
-#'
-#' The goal is to get R_c from PfPR and some measure of treatment.
-#' Input data is from the Malaria Atlas Project (MAP). It comes as GeoTIFFs
-#' for multiple years, for all of Africa.
-#'
-#' This script will work on a subset of input data, a subset of both
-#' lat-long pixels and years. Most of the work in this script is meant to
-#' process the data in parallel while preserving the clarity of the
-#' central calculation on the time series of each pixel through the
-#' years. That central calculation is in `pixel_work`.
-#'
-#' We are setting up to work on time series through the months and years.
-#' A time series will look like a 3D tile (time, spatial rows, spatial cols).
-#' There can be draws for these, too. Most of the complexity in this code
-#' is handling the separation of work into tiles and reconstituting it.
-#' The tools here will enable a splitting across jobs on the cluster and
-#' splitting into parallel processes within a job.
-#'
-#' There are subdivisions of the raster, each a bounding box we call an extent.
-#'   1. `whole_input_extent` - The input MAP data dimensions.
-#'   2. `domain_extent` - The rectangle for the calculation (say, Uganda), within
-#'          the `whole_input_extent`.
-#'   3. `process_extent` - The part that is loaded into this process on the cluster.
-#'          This is relative to the domain extent and calculated by looking at
-#'          which tiles this process will compute.
-#'
-#' The domain extent is everything we will calculate in a single cluster job.
-#' The process extent is what this particular cluster task will calculate.
-#' We split the `domain_extent` into tiles, and each process will
-#' calculate some set of tiles.
-#'
-#' What to read first:
-#'
-#' * `main` is an entrypoint into the program from the command line.
-#' * `funcmain` is what you would call to run this from within R.
-#'   This function is a roadmap to the code.
 
 library(futile.logger)
-# Using loadNamespace so that this fails early, if it's going to fail,
-# but I want to enforce the use of package identifiers in the code
-# so that we know where functions come from. If this code were in a
-# package, then installing the package would ensure we have the right libraries.
-loadNamespace("configr")
-loadNamespace("data.table")
-loadNamespace("docopt")
-loadNamespace("pracma")
-loadNamespace("raster")
-loadNamespace("rgdal")  # Not explicit but needed for raster.
-# Requires units which requires libudunits2-dev.
-loadNamespace("sf")
-loadNamespace("sp")
-loadNamespace("tmap")  # For plotting.
-
-# remotes::install_github("dd-harp/rampdata")
-loadNamespace("rampdata")
 
 
-# Don't know which directory will be our working directory.
-to_source <- c("country_outline.R", "hilbert.R", "plan_io.R", "serialize.R")
-if (dir.exists("gen_scaled_ar")) {
-  for (s in to_source) source(file.path("gen_scaled_ar", s))
-} else {
-  for (s in to_source) source(s)
-}
-
-
-#' A stack trace that shows which function had the problem.
+#' Asks R for a stack trace that shows which function had the problem.
+#' 
 #' https://renkun.me/2020/03/31/a-simple-way-to-show-stack-trace-on-error-in-r/
+#' @export
 improved_errors <- function() {
     options(error = function() {
         sink(stderr())
@@ -192,6 +131,7 @@ build_ar2pr <- function(pr_ar_data) {
 #' @param args Optionally pass the results of `commandArgs(TRUE)`.
 #'     We have this parameter so that we can test without side effects.
 #' @return A list where args that aren't on the command line are NULL.
+#' @export
 arg_parser <- function(args = NULL) {
     doc <- "pr to Rc
 
@@ -224,7 +164,8 @@ Options:
 
 #' Check whether the input arguments make sense.
 #' @param args A list of command-line arguments resulting from the arg parser.
-#' @return The same list of command-line arguments.
+#' @return The same list of command-line arguments with some new types.
+#' @export
 check_args <- function(args) {
     OK <- TRUE
     if (!file.exists(args$config)) {
@@ -1367,6 +1308,8 @@ parallel_core_cnt <- function(args = NULL) {
 
 
 #' If you want to run from the R command line, you can call this.
+#' @param args Command-line arguments, after they've been checked.
+#' 
 #' Use the same arguments as the commandline, but sent in as a list.
 #' For example,
 #' \Dontrun{
@@ -1379,6 +1322,7 @@ parallel_core_cnt <- function(args = NULL) {
 #' args$country <- "uga"
 #' funcmain(args)
 #' }
+#' @export
 funcmain <- function(args) {
     # We will want to split this work different ways for development,
     # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1468,6 +1412,8 @@ funcmain <- function(args) {
 
 
 #' If you want to run from the Bash command line, you can call this.
+#' 
+#' @export
 main <- function() {
     flog.threshold(DEBUG)
     improved_errors()
@@ -1476,6 +1422,13 @@ main <- function() {
 }
 
 
+#' Makes an initial plan.
+#' @param args Command-line arguments. Doesn't care about the number of tasks,
+#'     but otherwise might as well use the same command-line arguments here
+#'     as elsewhere.
+#' 
+#' If you want to call this, see \code{\link{main}} for an example.
+#' @export
 construct_plan <- function(args) {
   # We will want to split this work different ways for development,
   # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1567,6 +1520,12 @@ read_outputs <- function(chunks_fn, only_name = NULL) {
 }
 
 
+#' Reads the plan and produces this task's part of that plan.
+#' @param args Command-line arguments. If you don't give it a task, it
+#'     reads that task ID from the `SGE_TASK_ID` environment variable.
+#' 
+#' If you want to call this, see \code{\link{main}} for an example.
+#' @export
 worker <- function(args) {
   # We will want to split this work different ways for development,
   # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1634,6 +1593,11 @@ worker <- function(args) {
 }
 
 
+#' Reads output from workers and produces GeoTIFFs and images.
+#' @param args Command-line arguments. Ignores the task but uses the number of tasks.
+#' 
+#' If you want to call this, see \code{\link{main}} for an example.
+#' @export
 assemble <- function(args) {
   # We will want to split this work different ways for development,
   # laptops, and the cluster, so we use an explicit domain decomposition.

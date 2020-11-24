@@ -1,0 +1,35 @@
+[versions]
+pfpr = "201029_sam_mean"
+am = "201029"
+pr2ar = "201105"
+outvars = "201123_sam_mean"
+
+[roles]
+pfpr = "/globalrc/inputs/PfPR_medians/{{pfpr}}"
+am = "/globalrc/inputs/AM_medians/{{am}}"
+pr2ar = "/globalrc/outputs/pr2ar_mesh/{{pr2ar}}/pr2ar_mesh.csv"
+outvars = "/globalrc/outputs/basicr/{{outvars}}"
+
+[parameters]
+# These are scientific parameters.
+kam = 0.6  # modifies AM to get rho
+b = 0.55  # biting
+b_shape1 = 55
+b_shape2 = 45
+c = 0.17
+k = 4.2
+r = 0.005  # 1/recovery
+r_sd = 0.0003333333  # 1/3000
+tau = 10  # duration of time period
+D_low = 5  # days with treatment
+D_high = 40  # days without treatment
+random_seed = 9246105
+confidence_percent = 95
+
+[options]
+# These affect computation but not output scientific numbers.
+blocksize = 64
+single_tile_max = 2000
+pngwidth = 2048
+pngheight = 2048
+pngres = 150
