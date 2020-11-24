@@ -15,6 +15,10 @@ transmission intensity in a region.
 
 The rest should happen through regular installation.
 
+```
+remotes::install_github("dd-harp/globalrc")
+```
+
 
 # Documentation
 
