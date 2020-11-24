@@ -2,7 +2,7 @@
 pfpr = "201029_sam_mean"
 am = "201029"
 pr2ar = "201105"
-outvars = "201123_sam_mean"
+outvars = "201124_africa_mean"
 
 [roles]
 pfpr = "/globalrc/inputs/PfPR_medians/{{pfpr}}"
