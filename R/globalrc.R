@@ -48,6 +48,7 @@
 #' @import pracma
 #' @import rampdata
 #' @import raster
+#' @import rhdf5
 #' @import rgdal
 #' @import sf
 #' @import sp

@@ -31,7 +31,8 @@ gadm_country_shapefile <- function(alpha3, admin_level = 0, gadm_version = "2011
             unzip_dir <- tempfile()
             country_sf <- tryCatch({
                 unzip(rampdata::as.path(zip_rp), files = inner_fn, exdir = unzip_dir)
-                sf::st_read(unzip_dir)
+                capture.output({shape <- sf::st_read(unzip_dir)})
+                shape
             },
             finally = {
                 if (dir.exists(unzip_dir)) {

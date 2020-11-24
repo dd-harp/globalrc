@@ -1091,8 +1091,8 @@ write_output <- function(output, years, domain_extent, args, options) {
     ))
 
     outline_rp <- rampdata::ramp_path("/inputs/country_outlines/201122")
-    admin0 <- sf::st_read(rampdata::as.path(rampdata::add_path(
-        outline_rp, file = "ne_10m_admin_0_countries_lakes")))
+    capture.output({admin0 <- sf::st_read(rampdata::as.path(rampdata::add_path(
+        outline_rp, file = "ne_10m_admin_0_countries_lakes")))})
 
     dest_dir <- build_outvars_dir(args$outvars)
     for (name in names(output)) {
