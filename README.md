@@ -24,7 +24,7 @@ remotes::install_github("dd-harp/globalrc")
 
 * The help page for globalrc describes how it splits data for processing.
 * [How to use the cluster](scripts/run_ramp.md)
-* [How to use create globalrc](scripts/rc_kappa.md)
+* [How to create globalrc](scripts/rc_kappa.md)
 
 
 # What does this do?
