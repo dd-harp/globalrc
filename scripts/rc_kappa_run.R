@@ -1,0 +1,2 @@
+library(globalrc)
+globalrc::main()

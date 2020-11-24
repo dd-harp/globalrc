@@ -2,18 +2,36 @@ Package: globalrc
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "Andrew",
+    c(person(given = "Andrew",
            family = "Dolgert",
            role = c("aut", "cre"),
            email = "adolgert@uw.edu",
-           comment = c(ORCID = "000-0002-6477-7981"))
+           comment = c(ORCID = "000-0002-6477-7981")),
     person(given = "Dave",
            family = "Smith",
-           role = c("led", "cre"),
-           email = "smitdave@uw.edu")
+           role = c("led"),
+           email = "smitdave@uw.edu"))
 Description: Computes global Rc for malaria from PfPR and treatment rate.
 License: MIT + file LICENSE
+URL: https://github.com/dd-harp/globalrc
+BugReports: https://github.com/dd-harp/globalrc/issues
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
+Suggests: 
+    testthat
+Imports:
+    configr,
+    data.table,
+    docopt,
+    futile.logger,
+    parallel,
+    pracma,
+    rampdata,
+    raster,
+    rhdf5,
+    rgdal,
+    sf,
+    sp,
+    tmap

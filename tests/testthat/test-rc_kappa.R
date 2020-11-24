@@ -1,10 +1,4 @@
-source("rc_kappa.R")
-
-if (dir.exists("gen_scaled_ar")) {
-    .default.toml <- file.path("gen_scaled_ar", "rc_kappa.toml")
-} else {
-    .default.toml <- "rc_kappa.toml"
-}
+.default.toml <- system.file("testdata", "rc_kappa.toml", package = "globalrc")
 
 .arg.tests <- list(
     list(a = c("--country=UGA"), b = list(country = "UGA")),
@@ -61,6 +55,13 @@ test_that("available_data finds UGA outline", {
     expect_lt(unname(data$domain_extent["cmax"]), 1681)
 })
 
+
+test_that("years_in_filenames picks up any filename",{
+    fns <- c("dfb2000.tif", "haha32.tif", "blah2019_16.tif")
+    by_year <- years_in_filenames(fns)
+    expect_equal(names(by_year), as.character(c(2000, 2019)))
+    expect_equal(unname(by_year), c(fns[1], fns[3]))
+})
 
 .default.options <- list(blocksize = 32L, single_tile_max = 2000L)
 
@@ -120,7 +121,7 @@ test_that("raster_extent_from_work calculates larger correctly", {
 
 test_that("load_data loads", {
     test_requires_data()
-    defaults <- arg_parser()
+    defaults <- arg_parser(sprintf("--config=%s", .default.toml))
     domain_extent <- c(rmin = 1L, rmax = 32L, cmin = 65L, cmax = 128L)
     data <- load_data(defaults$config, defaults$pr2ar, domain_extent, 2000:2001)
     expect_equal(data$parameters$b, 0.55)
@@ -190,19 +191,6 @@ test_that("prepare_timeseries", {
         AR = c(0.0, 0.0, 0.7, 0.99)
     )
 
-test_that("over_block_no_series handles structure of parameters", {
-    # The mock output should match the timeseries dimension,
-    # the first dimension of the arrays.
-    didx <- c(4, 2, 3)
-    dcnt <- prod(didx)
-    arr <- array(rep(0.1, dcnt), dim = didx)  # years, rows, cols.
-    chunk <- list(pfpr = arr, am = arr, tile = "anything")
-    pr_to_ar_dt <- .pr2ar.mesh
-    results <- over_block(chunk, .default.params, pr_to_ar_dt)
-    expect_equal(results$block, "anything")
-    expect_equal(dim(results$alpha), didx)
-})
-
 
 test_that("combine_output puts the right results in the right places", {
     blocksize <- c(row = 2, col = 3)
@@ -222,14 +210,8 @@ test_that("combine_output puts the right results in the right places", {
 
 test_that("chunks going to pixel calc have data", {
     test_requires_data()
-    gen_dir <- "gen_scaled_ar"
-    if (dir.exists(gen_dir)) {
-        rc_kappa <- file.path(gen_dir, "rc_kappa.toml")
-    } else {
-        rc_kappa <- "rc_kappa.toml"
-    }
     args <- check_args(arg_parser(c(
-        paste0("--config=", rc_kappa),
+        paste0("--config=", .default.toml),
         "--country=uga",  # gmb = The Gambia, for a small one. uga = Uganda.
         "--years=2010:2011",
         "--overwrite",
@@ -265,7 +247,7 @@ test_that("ar_of_pr_rho fits the function it should", {
     pr_to_ar <- ar_of_pr_rho(pr_to_ar_dt)
     # Putting a unit test right here. Run every time. Hah.
     for (test_line in c(5, 20, 42)) {
-        egval <- pr_to_ar_dt[5]
+        egval <- pr_to_ar_dt[test_line, ]
         relerr <- (pr_to_ar(egval$PR, egval$rho) - egval$AR) / egval$AR
         expect_lt(relerr, 0.01)
     }

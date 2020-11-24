@@ -1,8 +1,3 @@
-#' This file is for saving arrays in HDF5.
-#' We need to save chunks of arrays, with lots of metadata,
-#' so HDF5 lets us do that and keep everything together,
-#' instead of trying to parse filenames to do it.
-NULL
 
 library(futile.logger)
 
@@ -14,6 +9,12 @@ library(futile.logger)
 #'     saved, if HDF5 will save them. I don't know the rules
 #'     on what it will/won't save, but strings and arrays
 #'     should be good.
+#'
+#' This function is for saving arrays in HDF5.
+#' We need to save chunks of arrays, with lots of metadata,
+#' so HDF5 lets us do that and keep everything together,
+#' instead of trying to parse filenames to do it.
+#'
 #' @export
 save_chunks <- function(filename, chunks, group_name = "chunks") {
   if (!file.exists(filename)) {

@@ -1,6 +1,3 @@
-loadNamespace("sf")
-loadNamespace("rampdata")
-
 #' Retrieve the shapefile for a country at the given level.
 #' GADM identifies countries with the Alpha-3 country code.
 #' If the file doesn't exist, it will return a NULL.
@@ -9,10 +6,10 @@ loadNamespace("rampdata")
 #'     fewer levels.
 #' @param gadm_version When this version of GADM was downloaded.
 #' @return A shapefile from the `sf` package, read with `st_read`.
-#' 
+#'
 #' This function depends on having a working `tempfile()` command because it
 #' has to unzip the shapefile into a temporary directory.
-#' 
+#'
 #' @export
 gadm_country_shapefile <- function(alpha3, admin_level = 0, gadm_version = "201104") {
     gadm_rp <- rampdata::ramp_path(
@@ -34,7 +31,8 @@ gadm_country_shapefile <- function(alpha3, admin_level = 0, gadm_version = "2011
             unzip_dir <- tempfile()
             country_sf <- tryCatch({
                 unzip(rampdata::as.path(zip_rp), files = inner_fn, exdir = unzip_dir)
-                sf::st_read(unzip_dir)
+                capture.output({shape <- sf::st_read(unzip_dir)})
+                shape
             },
             finally = {
                 if (dir.exists(unzip_dir)) {

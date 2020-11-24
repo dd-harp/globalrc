@@ -1,72 +1,11 @@
-#' This script reads PfPR and treatment rasters and produces several variables.
-#'
-#' The goal is to get R_c from PfPR and some measure of treatment.
-#' Input data is from the Malaria Atlas Project (MAP). It comes as GeoTIFFs
-#' for multiple years, for all of Africa.
-#'
-#' This script will work on a subset of input data, a subset of both
-#' lat-long pixels and years. Most of the work in this script is meant to
-#' process the data in parallel while preserving the clarity of the
-#' central calculation on the time series of each pixel through the
-#' years. That central calculation is in `pixel_work`.
-#'
-#' We are setting up to work on time series through the months and years.
-#' A time series will look like a 3D tile (time, spatial rows, spatial cols).
-#' There can be draws for these, too. Most of the complexity in this code
-#' is handling the separation of work into tiles and reconstituting it.
-#' The tools here will enable a splitting across jobs on the cluster and
-#' splitting into parallel processes within a job.
-#'
-#' There are subdivisions of the raster, each a bounding box we call an extent.
-#'   1. `whole_input_extent` - The input MAP data dimensions.
-#'   2. `domain_extent` - The rectangle for the calculation (say, Uganda), within
-#'          the `whole_input_extent`.
-#'   3. `process_extent` - The part that is loaded into this process on the cluster.
-#'          This is relative to the domain extent and calculated by looking at
-#'          which tiles this process will compute.
-#'
-#' The domain extent is everything we will calculate in a single cluster job.
-#' The process extent is what this particular cluster task will calculate.
-#' We split the `domain_extent` into tiles, and each process will
-#' calculate some set of tiles.
-#'
-#' What to read first:
-#'
-#' * `main` is an entrypoint into the program from the command line.
-#' * `funcmain` is what you would call to run this from within R.
-#'   This function is a roadmap to the code.
 
 library(futile.logger)
-# Using loadNamespace so that this fails early, if it's going to fail,
-# but I want to enforce the use of package identifiers in the code
-# so that we know where functions come from. If this code were in a
-# package, then installing the package would ensure we have the right libraries.
-loadNamespace("configr")
-loadNamespace("data.table")
-loadNamespace("docopt")
-loadNamespace("pracma")
-loadNamespace("raster")
-loadNamespace("rgdal")  # Not explicit but needed for raster.
-# Requires units which requires libudunits2-dev.
-loadNamespace("sf")
-loadNamespace("sp")
-loadNamespace("tmap")  # For plotting.
-
-# remotes::install_github("dd-harp/rampdata")
-loadNamespace("rampdata")
 
 
-# Don't know which directory will be our working directory.
-to_source <- c("country_outline.R", "hilbert.R", "plan_io.R", "serialize.R")
-if (dir.exists("gen_scaled_ar")) {
-  for (s in to_source) source(file.path("gen_scaled_ar", s))
-} else {
-  for (s in to_source) source(s)
-}
-
-
-#' A stack trace that shows which function had the problem.
+#' Asks R for a stack trace that shows which function had the problem.
+#' 
 #' https://renkun.me/2020/03/31/a-simple-way-to-show-stack-trace-on-error-in-r/
+#' @export
 improved_errors <- function() {
     options(error = function() {
         sink(stderr())
@@ -192,6 +131,7 @@ build_ar2pr <- function(pr_ar_data) {
 #' @param args Optionally pass the results of `commandArgs(TRUE)`.
 #'     We have this parameter so that we can test without side effects.
 #' @return A list where args that aren't on the command line are NULL.
+#' @export
 arg_parser <- function(args = NULL) {
     doc <- "pr to Rc
 
@@ -224,7 +164,8 @@ Options:
 
 #' Check whether the input arguments make sense.
 #' @param args A list of command-line arguments resulting from the arg parser.
-#' @return The same list of command-line arguments.
+#' @return The same list of command-line arguments with some new types.
+#' @export
 check_args <- function(args) {
     OK <- TRUE
     if (!file.exists(args$config)) {
@@ -279,9 +220,12 @@ check_args <- function(args) {
 #' @return A list of numeric years.
 years_in_filenames <- function(filenames) {
     matches <- regexpr("[0-9]{4}", filenames)
-    start <- as.numeric(matches)
-    stop <- as.numeric(attr(matches, "match.length")) + start - 1
-    as.numeric(substr(filenames, start, stop))
+    start <- matches[matches > 0]
+    stop <- attr(matches, "match.length")[matches > 0] + start - 1
+    year_files <- filenames[matches > 0]
+    years <- substr(year_files, start, stop)
+    names(year_files) <- years
+    year_files
 }
 
 
@@ -306,10 +250,10 @@ pixel_bounding_box <- function(map_raster, bbox) {
 available_data <- function(input_version, country_code, select_years) {
     pfpr_dir <- rampdata::workflow_path("pfpr")
     pfpr_files <- list.files(rampdata::as.path(pfpr_dir), "*.tif")
-    pfpr_years <- years_in_filenames(pfpr_files)
+    pfpr_years <- as.integer(names(years_in_filenames(pfpr_files)))
     am_dir <- rampdata::workflow_path("am")
     am_files <- list.files(rampdata::as.path(am_dir), "*.tif")
-    am_years <- years_in_filenames(am_files)
+    am_years <- as.integer(names(years_in_filenames(am_files)))
     # We could choose, instead, to extend either one to cover missing years
     # in the other.
     shared_years <- sort(intersect(am_years, pfpr_years))
@@ -317,7 +261,7 @@ available_data <- function(input_version, country_code, select_years) {
         shared_years <- sort(intersect(shared_years, select_years))
     }
 
-    pr_fn <- paste0("PfPR_median_Africa_admin0_", shared_years[1], ".tif")
+    pr_fn <- pfpr_files[1]
     pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
     pfpr <- raster::raster(rampdata::as.path(pfpr_file))
     whole_input_extent <- c(rmin = 1, rmax = raster::nrow(pfpr),
@@ -375,13 +319,16 @@ available_data <- function(input_version, country_code, select_years) {
 
 #' Get all the data for a country as a convenience function.
 data_for_country <- function(country_alpha3, years) {
-    pfpr_dir <- rampdata::workflow_path("pfpr")
-    am_dir <- rampdata::workflow_path("am")
-
+    # The country will be our lat-long outline.
     outline_sf <- gadm_country_shapefile(country_alpha3)
     bbox <- sf::st_bbox(outline_sf)
-    pr_fn <- paste0("PfPR_median_Africa_admin0_", years[1], ".tif")
-    pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
+
+    pfpr_dir <- rampdata::workflow_path("pfpr")
+    am_dir <- rampdata::workflow_path("am")
+    pfpr_yearly <- years_in_filenames(list.files(rampdata::as.path(pfpr_dir)))
+    am_yearly <- years_in_filenames(list.files(rampdata::as.path(am_dir)))
+
+    pfpr_file <- rampdata::add_path(pfpr_dir, file = pfpr_yearly[1])
     pfpr <- raster::raster(rampdata::as.path(pfpr_file))
     domain_extent <- pixel_bounding_box(pfpr, bbox)
     flog.debug("domain_extent", paste(domain_extent, collapse = ","))
@@ -390,7 +337,7 @@ data_for_country <- function(country_alpha3, years) {
     am_all <- list()
     for (year_idx in 1:length(years)) {
         year <- years[year_idx]
-        pr_fn <- paste0("PfPR_median_Africa_admin0_", year, ".tif")
+        pr_fn <- pfpr_yearly[as.character(year)]
         pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
         if (!file.exists(rampdata::as.path(pfpr_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(pfpr_file))
@@ -398,9 +345,8 @@ data_for_country <- function(country_alpha3, years) {
             stop(msg)
         }
 
-        am_file <- rampdata::add_path(
-            am_dir,
-            file = paste0(year, ".effective.treatment.tif"))
+        am_fn <- am_yearly[as.character(year)]
+        am_file <- rampdata::add_path(am_dir, file = am_fn)
         if (!file.exists(rampdata::as.path(am_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(am_file))
             flog.error(msg)
@@ -459,9 +405,13 @@ data_for_country <- function(country_alpha3, years) {
         sentinel <- dim(list_of_matrices[[1]])
         array(do.call(c, list_of_matrices), dim = c(sentinel, length(list_of_matrices)))
     }
+    pfpr_arr <- combine(pfpr_all)
+    am_arr <- combine(am_all)
+    stopifnot(length(dim(pfpr_arr)) == 3)
+    stopifnot(length(dim(am_arr)) == 3)
     list(
-        pfpr = combine(pfpr_all),
-        am = combine(am_all)
+        pfpr = pfpr_arr,
+        am = am_arr
     )
 }
 
@@ -478,12 +428,21 @@ load_data <- function(config, pr2ar_version, domain_extent, years) {
     pr_to_ar_dt <- data.table::fread(rampdata::as.path(pr2ar_rp))
     pfpr_dir <- rampdata::workflow_path("pfpr")
     am_dir <- rampdata::workflow_path("am")
+    pfpr_yearly <- years_in_filenames(list.files(rampdata::as.path(pfpr_dir)))
+    am_yearly <- years_in_filenames(list.files(rampdata::as.path(am_dir)))
 
     pfpr_all <- list()
     am_all <- list()
     for (year_idx in 1:length(years)) {
         year <- years[year_idx]
-        pr_fn <- paste0("PfPR_median_Africa_admin0_", year, ".tif")
+        year_str <- as.character(year)
+        if (!year_str %in% names(pfpr_yearly)) {
+          msg <- sprintf("Cannot find year %d in %s", year,
+                             paste0(names(pfpr_yearly), collapse = ","))
+          flog.error(msg)
+          stop(msg)
+        }
+        pr_fn <- pfpr_yearly[year_str]
         pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
         if (!file.exists(rampdata::as.path(pfpr_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(pfpr_file))
@@ -491,9 +450,8 @@ load_data <- function(config, pr2ar_version, domain_extent, years) {
             stop(msg)
         }
 
-        am_file <- rampdata::add_path(
-            am_dir,
-            file = paste0(year, ".effective.treatment.tif"))
+        am_fn <- am_yearly[as.character(year)]
+        am_file <- rampdata::add_path(am_dir, file = am_fn)
         if (!file.exists(rampdata::as.path(am_file))) {
             msg <- paste("Cannot find pfpr at", rampdata::as.path(am_file))
             flog.error(msg)
@@ -582,6 +540,8 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
     stopifnot(is_tile(blocksize))
     pfpr <- collect_and_permute(data$pfpr)
     am <- collect_and_permute(data$am)
+    stopifnot(length(dim(pfpr)) == 3)
+    stopifnot(length(dim(am)) == 3)
 
     work_cnt <- dim(work)[2]
     pieces <- lapply(1:work_cnt, FUN = function(col) {
@@ -592,8 +552,8 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
         # flog.debug(paste("tile", paste(tile, collapse = ","),
         #     "relative extent", paste(rel, collapse = ","), "\n"
         # ))
-        pfpr_chunk <- pfpr[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"]]
-        am_chunk <- am[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"]]
+        pfpr_chunk <- pfpr[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"], drop = FALSE]
+        am_chunk <- am[, rel["rmin"]:rel["rmax"], rel["cmin"]:rel["cmax"], drop = FALSE]
         list(tile = tile, pfpr = pfpr_chunk, am = am_chunk)
     })
 
@@ -707,6 +667,7 @@ linearized_work <- function(input_list, run_func) {
     # The arrays are probably three-dimensional.
     not_available <- lapply(input_list, function(check) is.na(check))
     input_dims <- dim(input_list[[1]])
+    stopifnot(length(input_dims) == 3)
     dim_keep <- length(input_dims)
     # If any array has an NA in a position in the array, then that position is
     # thrown out for all input arrays.
@@ -732,37 +693,6 @@ linearized_work <- function(input_list, run_func) {
         complete[keep] <- result
         array(complete, dim = input_dims)
     })
-}
-
-
-#' Accumulate the individual time series from a computation that doesn't care about time.
-#' @param chunk A list with pfpr, am, and the tile.
-#' @param parameters A list of parameters for the calculation.
-#' @param pr_to_ar_dt The pr-ar data from the mechanistic model.
-#' @return a list with an entry for each of alpha, kappa, eir, vc, rc.
-#'     It also identifies the source block by block_id.
-#'
-#' If the pixel function doesn't care about time, then there is no
-#' reason to loop over the matrix. Turn the matrix into a single vector
-#' and then do the computation.
-over_block <- function(chunk, parameters, pr_to_ar_dt) {
-    parameters$pr_to_ar <- ar_of_pr_rho(pr_to_ar_dt)
-    parameters$ar2pr <- build_ar2pr(pr_to_ar_dt)
-    strategies <- list(kappaf = kappa_rm, rcf = rc_basic)
-    # The first dimension is the timeseries, so row=2, col=3.
-    run_func <- function(plaquette) {
-        pixel_work(plaquette$pfpr, plaquette$am, parameters, strategies)
-    }
-    only_data <- chunk[names(chunk)[!names(chunk) %in% "tile"]]
-    results <- linearized_work(only_data, run_func)
-    flog.debug(paste("chunk", paste(chunk$tile, collapse = ","),
-        "has", sum(is.na(results$alpha)), "na alpha values and",
-        sum(results$alpha > 0 & results$alpha < 1, na.rm = TRUE),
-        "in 0 < x < 1."
-    ))
-    results[["array_names"]] <- names(results)
-    results[["block"]] <- chunk$tile
-    results
 }
 
 
@@ -897,6 +827,7 @@ summarize_draws <- function(draws, confidence_percent) {
     draw_cnt <- length(draws)
     array_names <- names(draws[[1]])
     array_dim <- dim(draws[[1]][[1]])
+    stopifnot(length(array_dim) == 3)
     summarized <- lapply(array_names, function(name) {
         var_data <- array(
             do.call(
@@ -916,11 +847,18 @@ summarize_draws <- function(draws, confidence_percent) {
             FUN = function(x) quantile(x, quantiles, na.rm = TRUE)
             )
         quantile_last <- aperm(quantile_first, c(2, 3, 4, 1))
-        list(
-            lower = quantile_last[, , , 1],
-            median = quantile_last[, , , 2],
-            upper = quantile_last[, , , 3]
+        sumd <- list(
+            lower = quantile_last[, , , 1, drop= FALSE],
+            median = quantile_last[, , , 2, drop= FALSE],
+            upper = quantile_last[, , , 3, drop= FALSE]
         )
+        sumd <- lapply(sumd, function(x) {
+            pre_dim <- dim(x)
+            dim(x) <- pre_dim[1:3]
+            x
+        })
+        stopifnot(length(dim(sumd[["median"]])) == 3)
+        sumd
     })
     names(summarized) <- array_names
     flattened <- flatten_draws(summarized)
@@ -1075,7 +1013,7 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
   quantile <- parts[2]
 
   if (kind %in% names(.plot.kinds)) {
-    aplot <- tmap::tm_shape(vc_median) +
+    aplot <- tmap::tm_shape(raster_obj) +
       tmap::tm_raster(
         breaks = .plot.kinds[[kind]]$breaks,
           title = sprintf(
@@ -1086,9 +1024,9 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
         )
       ) +
        tmap::tm_layout(
-        legend.position = c("left", "bottom") 
+        legend.position = c("left", "bottom")
       ) +
-      tmap::tm_shape(admin0lakes) +
+      tmap::tm_shape(admin0) +
       tmap::tm_borders()
     tmap::tmap_save(aplot, filename, asp = 0, height = options$pngheight)
   } else {
@@ -1122,8 +1060,8 @@ write_output <- function(output, years, domain_extent, args, options) {
     ))
 
     outline_rp <- rampdata::ramp_path("/inputs/country_outlines/201122")
-    admin0 <- sf::st_read(rampdata::as.path(rampdata::add_path(
-        outline_rp, file = "ne_10m_admin_0_countries_lakes")))
+    capture.output({admin0 <- sf::st_read(rampdata::as.path(rampdata::add_path(
+        outline_rp, file = "ne_10m_admin_0_countries_lakes")))})
 
     dest_dir <- build_outvars_dir(args$outvars)
     for (name in names(output)) {
@@ -1339,6 +1277,8 @@ parallel_core_cnt <- function(args = NULL) {
 
 
 #' If you want to run from the R command line, you can call this.
+#' @param args Command-line arguments, after they've been checked.
+#' 
 #' Use the same arguments as the commandline, but sent in as a list.
 #' For example,
 #' \Dontrun{
@@ -1351,6 +1291,7 @@ parallel_core_cnt <- function(args = NULL) {
 #' args$country <- "uga"
 #' funcmain(args)
 #' }
+#' @export
 funcmain <- function(args) {
     # We will want to split this work different ways for development,
     # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1417,7 +1358,7 @@ funcmain <- function(args) {
         }
     )
     flog.debug("End of parallel work.")
-    stopCluster(cluster)
+    parallel::stopCluster(cluster)
     } else {
     output <- lapply(
         chunks,
@@ -1440,6 +1381,8 @@ funcmain <- function(args) {
 
 
 #' If you want to run from the Bash command line, you can call this.
+#' 
+#' @export
 main <- function() {
     flog.threshold(DEBUG)
     improved_errors()
@@ -1448,6 +1391,13 @@ main <- function() {
 }
 
 
+#' Makes an initial plan.
+#' @param args Command-line arguments. Doesn't care about the number of tasks,
+#'     but otherwise might as well use the same command-line arguments here
+#'     as elsewhere.
+#' 
+#' If you want to call this, see \code{\link{main}} for an example.
+#' @export
 construct_plan <- function(args) {
   # We will want to split this work different ways for development,
   # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1516,6 +1466,10 @@ save_outputs <- function(chunks_fn, outputs) {
       }  # else it's the block, blockhead.
     }
     tile_name <- sprintf("%d_%d", block["row"], block["col"])
+    flog.debug(sprintf(
+      "save %d chunks to tile %s in file %s",
+      length(chunks), tile_name, chunks_fn
+    ))
     save_chunks(chunks_fn, chunks, group_name = tile_name)
   }
 }
@@ -1535,6 +1489,12 @@ read_outputs <- function(chunks_fn, only_name = NULL) {
 }
 
 
+#' Reads the plan and produces this task's part of that plan.
+#' @param args Command-line arguments. If you don't give it a task, it
+#'     reads that task ID from the `SGE_TASK_ID` environment variable.
+#' 
+#' If you want to call this, see \code{\link{main}} for an example.
+#' @export
 worker <- function(args) {
   # We will want to split this work different ways for development,
   # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1602,6 +1562,11 @@ worker <- function(args) {
 }
 
 
+#' Reads output from workers and produces GeoTIFFs and images.
+#' @param args Command-line arguments. Ignores the task but uses the number of tasks.
+#' 
+#' If you want to call this, see \code{\link{main}} for an example.
+#' @export
 assemble <- function(args) {
   # We will want to split this work different ways for development,
   # laptops, and the cluster, so we use an explicit domain decomposition.
@@ -1636,7 +1601,13 @@ assemble <- function(args) {
   }
 
   ds_names <- read_dataset_names(task_name_fn(1))
-  for (ds_name in ds_names) {
+  # Subset to aeir and rc.
+  #aeir_names <- ds_names[grep("^aeir", ds_names)]
+  #rc_names <- ds_names[grep("^rc", ds_names)]
+  vc_names <-ds_names[grep("^vc", ds_names)]
+  #best_names <- c(rc_names, aeir_names)
+  best_names <- vc_names
+  for (ds_name in best_names) {
     output <- list()
     for (task_idx in 1:args$tasks) {
       more_output <- read_outputs(task_name_fn(task_idx), ds_name)
