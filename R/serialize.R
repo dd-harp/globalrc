@@ -65,7 +65,8 @@ save_chunks <- function(filename, chunks, group_name = "chunks") {
 
 
 load_chunks <- function(filename, group_name = "chunks", only_name = NULL) {
-  base_file <- rhdf5::H5Fopen(filename)
+  # Using read-only means more than one process can read the file at the same time.
+  base_file <- rhdf5::H5Fopen(filename, "H5F_ACC_RDONLY")
   tryCatch({
     # parent_group <- create_parent_groups_id(base_file, data_name)
     sandbox <- rhdf5::H5Gopen(base_file, group_name)
@@ -113,6 +114,8 @@ load_chunks <- function(filename, group_name = "chunks", only_name = NULL) {
 }
 
 
+#' Finds the name of every three-dimensional array in a file.
+#' @param filename The HDF5 file to read.
 read_dataset_names <- function(filename) {
   df <- rhdf5::h5ls(filename, recursive = 2, all = TRUE)
   unique(df[df$rank == 3, "name"])

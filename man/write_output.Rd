@@ -4,12 +4,14 @@
 \alias{write_output}
 \title{Given outputs for a tile, write them to a folder.}
 \usage{
-write_output(output, years, domain_extent, args, options)
+write_output(output, years, domain_dimensions, domain_extent, args, options)
 }
 \arguments{
 \item{output}{A list of results.}
 
 \item{years}{Years that will save.}
+
+\item{domain_dimensions}{Resolution of the raster and bounds in lat-long.}
 
 \item{domain_extent}{Bounds and resolution of the raster.}
 

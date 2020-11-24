@@ -1,3 +1,4 @@
+library(futile.logger)
 library(globalrc)
 flog.threshold(DEBUG)
 improved_errors()

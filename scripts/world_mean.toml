@@ -2,7 +2,7 @@
 pfpr = "201123_mean"
 am = "201123"
 pr2ar = "201105"
-outvars = "201123_global_median"
+outvars = "201124_global_median"
 
 [roles]
 pfpr = "/globalrc/inputs/global_pfpr/{{pfpr}}"

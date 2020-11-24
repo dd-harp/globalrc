@@ -172,3 +172,11 @@ to run this in parallel over the variables. Takes about 20 mins now.
 ```
 /ihme/singularity-images/rstudio/shells/execRscript.sh -i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img -s  rc_run_assemble.R --config=rc_kappa.toml --outvars=201121_split100 --years=2000:2019 --draws=100 --tasks=100
 ```
+
+The workers can run in parallel with GNU parallel. You use the task
+ID to say which variable this worker will save. There are currently
+18 variables, but may change.
+
+```
+parallel Rscript scripts/rc_run_assemble.R --config=scripts/sam_mean.toml   --outvars=201124_africa_mean --years=2017:2017 --draws=100 --tasks=217 --overwrite --task={} ::: {1..18}
+```
