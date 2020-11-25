@@ -49,3 +49,6 @@ world_mean_worker:
 	-s rc_run_worker.R --config=world_mean.toml   --outvars=201123_global_median \
 	--years=2019:2019 --draws=3 --tasks=9000
 
+render:
+	rmarkdown::render("notebooks/check_pixel_work.Rmd")
+	
