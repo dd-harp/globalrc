@@ -6,6 +6,15 @@
 \usage{
 draw_parameters(parameters, N)
 }
+\arguments{
+\item{parameters}{The config file parameters, no draws on input.}
+
+\item{N}{the number of draws to make. Can be 1 for no draws.}
+}
+\value{
+A data frame with one row per draw, even if it's one.
+Goes with pixel_three.
+}
 \description{
 Takes a parameter that is an expression (of drawing a distribution) and calls it.
 }

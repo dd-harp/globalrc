@@ -27,6 +27,8 @@ D_low = 5  # days with treatment
 D_high = 40  # days without treatment
 random_seed = 24243299
 confidence_percent = 95
+pfpr_min = 0.02
+pfpr_max = 0.98
 
 [options]
 # These affect computation but not output scientific numbers.

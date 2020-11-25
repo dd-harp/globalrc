@@ -75,9 +75,9 @@ linearized_work <- function(input_list, run_func) {
         results <- check_linearized_outputs(run_func(linear), linear)
     } else {
         # Don't call the function with no data, but how do we know
-	# variable names? Call the function with small, fake data.
+        # variable names? Call the function with small, fake data.
         just_names <- run_func(list(pfpr=c(0.1), am = c(0.02)))
-	results <- lapply(just_names, function(x) numeric(0))
+    results <- lapply(just_names, function(x) numeric(0))
     }
 
     # The returned values will have NA for the same pattern in all outputs.

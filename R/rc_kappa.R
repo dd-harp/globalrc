@@ -133,10 +133,10 @@ funcmain <- function(args) {
     flog.debug(sprintf("thread file out to %s", thread_fn))
     if (core_cnt > 1) {
     cluster <- parallel::makeCluster(
-    	    core_cnt,
-	    type = "FORK",
-	    outfile = thread_fn
-	    )
+      core_cnt,
+      type = "FORK",
+      outfile = thread_fn
+      )
     output <- parallel::clusterApplyLB(
         cluster,
         chunks,

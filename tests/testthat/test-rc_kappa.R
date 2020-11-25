@@ -257,31 +257,9 @@ test_that("ar_of_pr_rho fits the function it should", {
 })
 
 
-test_that("pixel_work works", {
-    pfpr <- c(0.0, 0.1, 0.2, 0.3, 0.4)
-    am <- c(0.66, 0.6, 0.4, 0.2, 0.0)
-    pr2ar <- ar_of_pr_rho(.pr2ar.mesh)
-    .default.strategies$pr_to_ar <- pr2ar
-    stopifnot("rho" %in% names(.pr2ar.mesh))
-    ar2pr_data <- data.table::data.table(
-        rho = c(0, 0),
-        AR = c(0.01, 0.9),
-        PR = c(0.01, 0.9)
-    )
-    .default.strategies$ar2pr <- build_ar2pr(ar2pr_data)
-    results <- pixel_two(pfpr, am, .default.params, .default.strategies)
-    # There will be some variables.
-    expect_gt(length(results), 2)
-    for (var in names(results)) {
-        expect_equal(length(results[[var]]), length(pfpr))
-        expect_true(all(!is.na(results[[var]])))
-    }
-})
-
-
 test_that("draw_parameters can be used in a with statement", {
     params <- list(r = 0.005, r_sd = 1/3000, b = 0.55, b_shape1 = 55,
-    k = 4.2, kam = 0.6,
+    k = 4.2, kam = 0.6, pfpr_min = 0.02, pfpr_max = 0.98,
     b_shape2 = 45, c = 0.17, tau = 10, D_low = 5, D_high = 40)
     draws <- draw_parameters(params, 100)
     ans = with(draws[37, ], {
