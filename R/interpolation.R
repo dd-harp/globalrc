@@ -67,7 +67,7 @@ ar_of_pr_rho2 <- function(pr_to_ar_dt) {
 
 
 #' This goes the other way, from AR to PR, with rho=0.
-#' @params pr_ar_data This is the table of pr, ar, and rho values.
+#' @param pr_ar_data This is the table of pr, ar, and rho values.
 #' @export
 build_ar2pr <- function(pr_ar_data) {
   no_treatment <- pr_ar_data[rho < 1e-6, c("PR", "AR")]

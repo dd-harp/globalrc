@@ -87,7 +87,7 @@ over_draws <- lapply(1:draw_cnt, function(draw_idx) {
   pixel_three(df$pfpr, df$am, draw_params[draw_idx, ], strategies)
 })
 var_names <- names(over_draws[[1]])
-for (single_var in "rc") {
+for (single_var in var_names) {
   single_arr <- vapply(over_draws, function(one_draw) {
     one_draw[[single_var]]
   }, FUN.VALUE = numeric(sample_cnt))
@@ -103,8 +103,18 @@ for (single_var in "rc") {
   names(single_summary) <- sprintf("%s_%s", single_var, names(single_summary))
   df <- cbind(df, single_summary)
 }
-data.table::fwrite(df, file = file.path(proj_root, "notebooks", "pixel_three.csv"))
+rc_only <- df[startsWith(names(df), "vc_"), ]
+data.table::fwrite(rc_only, file = file.path(proj_root, "notebooks", "pixel_three.csv"))
 df
 ```
 
+
+```{r}
+rho0 <- 0.5
+nearly <- function(a, b) { abs(a-b) < 1e-7 }
+pfpr_one_rho <- df[nearly(df$rh,rho0), ]
+with(pfpr_one_rho, {
+  plot(pfpr, arnotreat_median, main = sprintf("rho=%3.2f", rho0))
+})
+```
 

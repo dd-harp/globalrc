@@ -38,7 +38,7 @@ pr2k_quantile <- function(pfpr, ku, s1=6, s2 = 3) {
 
 
 pr2deir_quantile <- function(pfpr, r, b, kd) {
-  k <- pr2k_quantile(pr, ku)
+  k <- pr2k_quantile(pr, kd)
   pmin(((1 - pr)^ - k - 1) * (r / k / b), 1500 / 365)
 }
 
@@ -139,6 +139,8 @@ pixel_three <- function(pfpr, am, params, strategies) {
     R <- b * V * ((1 - rho) * D_high + rho * D_low)
     R[R > max_finite] <- max_finite
     list(
+      arnotreat = lower_ar,
+      artreat = upper_ar,
       alpha = alpha,
       kappa = kappa,
       foi = h,

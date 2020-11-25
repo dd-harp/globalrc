@@ -3,7 +3,7 @@ library(futile.logger)
 
 
 #' Asks R for a stack trace that shows which function had the problem.
-#' 
+#'
 #' https://renkun.me/2020/03/31/a-simple-way-to-show-stack-trace-on-error-in-r/
 #' @export
 improved_errors <- function() {
@@ -71,7 +71,7 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
 
 #' If you want to run from the R command line, you can call this.
 #' @param args Command-line arguments, after they've been checked.
-#' 
+#'
 #' Use the same arguments as the commandline, but sent in as a list.
 #' For example,
 #' \Dontrun{
@@ -175,7 +175,7 @@ funcmain <- function(args) {
 
 
 #' If you want to run from the Bash command line, you can call this.
-#' 
+#'
 #' @export
 main <- function() {
     flog.threshold(DEBUG)
@@ -189,7 +189,7 @@ main <- function() {
 #' @param args Command-line arguments. Doesn't care about the number of tasks,
 #'     but otherwise might as well use the same command-line arguments here
 #'     as elsewhere.
-#' 
+#'
 #' If you want to call this, see \code{\link{main}} for an example.
 #' @export
 construct_plan <- function(args) {
@@ -211,13 +211,14 @@ construct_plan <- function(args) {
   out_dir <- build_outvars_dir(args$outvars)
   data.table::fwrite(t(work), file = rampdata::as.path(rampdata::add_path(out_dir, file = "work.csv")))
   save_plan(plan, rampdata::as.path(rampdata::add_path(out_dir, file = "plan.json")))
+  length(remaining_tiles)
 }
 
 
 #' Reads the plan and produces this task's part of that plan.
 #' @param args Command-line arguments. If you don't give it a task, it
 #'     reads that task ID from the `SGE_TASK_ID` environment variable.
-#' 
+#'
 #' If you want to call this, see \code{\link{main}} for an example.
 #' @export
 worker <- function(args) {
@@ -289,7 +290,7 @@ worker <- function(args) {
 
 #' Reads output from workers and produces GeoTIFFs and images.
 #' @param args Command-line arguments. Ignores the task but uses the number of tasks.
-#' 
+#'
 #' If you want to call this, see \code{\link{main}} for an example.
 #' @export
 assemble <- function(args) {
