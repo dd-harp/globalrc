@@ -187,7 +187,7 @@ over_block_draw <- function(chunk, parameters, pr_to_ar_dt, confidence_percent) 
     draw_cnt <- nrow(parameters)
     draws <- lapply(1:draw_cnt, function(draw_idx) {
         run_func <- function(plaquette) {
-            pixel_three(plaquette$pfpr, plaquette$am, parameters[draw_idx, ], strategies)
+            pixel_four(plaquette$pfpr, plaquette$am, parameters[draw_idx, ], strategies)
         }
         linearized_work(only_data, run_func)
     })
