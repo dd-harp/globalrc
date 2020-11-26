@@ -80,11 +80,11 @@ rho <- seq(0, 0.5, 0.1)
 df <- data.frame(list(pfpr = rep(pfpr, length(rho)), rho = rep(rho, each = length(pfpr))))
 df$am <- df$rho / params$kam
 sample_cnt <- nrow(df)
-draw_cnt <- 1000
+draw_cnt <- 100000
 draw_params <- draw_parameters(params2, draw_cnt)
 
 over_draws <- lapply(1:draw_cnt, function(draw_idx) {
-  pixel_three(df$pfpr, df$am, draw_params[draw_idx, ], strategies)
+  pixel_four(df$pfpr, df$am, draw_params[draw_idx, ], strategies)
 })
 var_names <- names(over_draws[[1]])
 for (single_var in var_names) {
@@ -103,9 +103,37 @@ for (single_var in var_names) {
   names(single_summary) <- sprintf("%s_%s", single_var, names(single_summary))
   df <- cbind(df, single_summary)
 }
-rc_only <- df[startsWith(names(df), "vc_"), ]
-data.table::fwrite(rc_only, file = file.path(proj_root, "notebooks", "pixel_three.csv"))
+rc_only <- df[, startsWith(names(df), "vc_")]
+data.table::fwrite(df, file = file.path(proj_root, "notebooks", "pixel_four.csv"))
 df
+```
+
+```{r load_once}
+original <- load_pixel_script(file.path(proj_root, "R", "estimate_rc_script.R"))
+
+```
+
+```{r for_comparison}
+# draw_cnt <- 1000 # from above
+vals <- vapply(seq(0.02, 0.98, 0.02), function(pfpr) {
+  all_out <- original$pr2rcS(rep(pfpr, draw_cnt), Short = FALSE)
+  keep <- cbind(pfpr = pfpr, kappa = all_out$kappa, rc = all_out$Rc, aeir = all_out$aeir)
+  apply(keep, 2, median)
+}, FUN.VALUE = numeric(4))
+original_df <- data.frame(t(vals))
+```
+
+```{r compare_original}
+df2 <- df[df$rho == 0.0, c("kappa_median", "rc_median", "aeir_median")]
+names(df2)[names(df2) %in% c("kappa_median", "rc_median", "aeir_median")] <- c(
+  "kappa", "rc", "aeir"
+)
+relerr <- function(a, b) { (a - b) / b }
+list(
+rc = max(relerr(df2$rc, original_df$rc)),
+aeir = max(relerr(df2$aeir, original_df$aeir)),
+kappa = max(relerr(df2$kappa, original_df$kappa))
+)
 ```
 
 
