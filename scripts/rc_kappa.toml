@@ -16,17 +16,15 @@ outvars = "/globalrc/outputs/basicr/{{outvars}}"
 # These are scientific parameters.
 kam = 0.6  # modifies AM to get rho
 b = 0.55  # biting
-b_shape1 = 55
-b_shape2 = 45
-c = 0.17
+c = 0.175
 k = 4.2
 r = 0.005  # 1/recovery
-r_sd = 0.0003333333  # 1/3000
-tau = 10  # duration of time period
-D_low = 5  # days with treatment
-D_high = 40  # days without treatment
+r_inv_sd = 5
+s = 1
 random_seed = 24243299
 confidence_percent = 95
+pfpr_min = 0.02
+pfpr_max = 0.98
 
 [options]
 # These affect computation but not output scientific numbers.

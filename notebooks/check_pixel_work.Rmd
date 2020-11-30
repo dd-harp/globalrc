@@ -1,0 +1,148 @@
+---
+title: "Global Rc"
+output: html_notebook
+---
+
+# Introduction
+
+This checks the pixel_work function visually.
+
+## Goals
+
+```{r load_libraries}
+library(dplyr)
+library(futile.logger)
+library(plotrix)
+library(pracma)  # "practical math" alternative interpolation.
+library(rprojroot)
+library(viridis)
+library(globalrc)
+library(rampdata)
+invisible(flog.threshold(INFO))  # Set to DEBUG if you want to see messages.
+proj_root <- rprojroot::find_root(rprojroot::is_git_root)
+config <- file.path(proj_root, "scripts", "rc_kappa.toml")
+rampdata::initialize_workflow(config)
+```
+
+```{r plot_set_up}
+make_colors <- function() {
+  col <- viridis::plasma(7, alpha = 1, begin = 0, end = 1)
+  c(pfpr = col[1], am = col[2], alpha = col[3], kappa = col[4], aeir = col[5],
+       vc = col[6], rc = col[7])
+}
+mcol <- make_colors()
+var_names <- c("alpha", "kappa", "aeir", "vc", "rc")
+var_colors <- mcol[var_names]
+```
+
+## Initialization
+
+Austin made a map from PR and rho to AR. We will use that function,
+so load the data he calculated, and create an interpolation function.
+```{r read_script}
+
+# Load the data that Austin made, turning it into a function.
+local_pr2ar <- as.path(workflow_path("pr2ar"))
+if (!file.exists(local_pr2ar)) {
+  local_pr2ar <- file.path("..", local_pr2ar)
+  flog.debug("looking for pr2ar up a directory", local_pr2ar)
+}
+pr_to_ar_dt <- data.table::fread(local_pr2ar)
+params <- configr::read.config(config)$parameters
+show_df <- data.frame(params)
+strategies <- list(
+  pr_to_ar = ar_of_pr_rho(pr_to_ar_dt),
+  ar2pr = globalrc::build_ar2pr(pr_to_ar_dt)
+)
+show_df
+```
+
+## The main function
+
+```{r}
+# Lets me make a copy of parameters with some changes.
+set_params <- function(p, ...) {
+  ll <- list(...)
+  p[names(ll)] <- ll
+  p
+}
+params2 <- set_params(params, kam = 0.6)
+data.frame(params2[vapply(params2, is.numeric, logical(1))])
+```
+
+Make a table of values with the draws. That means we set the two inputs,
+pfpr and rho. Then we generate draws of parameter values, run the function
+against the inputs and parameter values, and summarize the results with
+mean and quantiles.
+```{r table_with_draws}
+pfpr <- seq(0.02, 0.98, 0.02)
+rho <- seq(0, 0.5, 0.1)
+df <- data.frame(list(pfpr = rep(pfpr, length(rho)), rho = rep(rho, each = length(pfpr))))
+df$am <- df$rho / params$kam
+sample_cnt <- nrow(df)
+draw_cnt <- 100000
+draw_params <- draw_parameters(params2, draw_cnt)
+
+over_draws <- lapply(1:draw_cnt, function(draw_idx) {
+  pixel_four(df$pfpr, df$am, draw_params[draw_idx, ], strategies)
+})
+var_names <- names(over_draws[[1]])
+for (single_var in var_names) {
+  single_arr <- vapply(over_draws, function(one_draw) {
+    one_draw[[single_var]]
+  }, FUN.VALUE = numeric(sample_cnt))
+  dim(single_arr)
+  single_summary <- list(
+    mean = apply(single_arr, c(1), mean),
+    median = apply(single_arr, c(1), function(x) quantile(x, 0.5)),
+    lower = apply(single_arr, c(1), function(x) quantile(x, 0.025)),
+    upper = apply(single_arr, c(1), function(x) quantile(x, 0.975)),
+    max = apply(single_arr, c(1), max),
+    min = apply(single_arr, c(1), min)
+  )
+  names(single_summary) <- sprintf("%s_%s", single_var, names(single_summary))
+  df <- cbind(df, single_summary)
+}
+rc_only <- df[, startsWith(names(df), "vc_")]
+data.table::fwrite(df, file = file.path(proj_root, "notebooks", "pixel_four.csv"))
+df
+```
+
+```{r load_once}
+original <- load_pixel_script(file.path(proj_root, "R", "estimate_rc_script.R"))
+
+```
+
+```{r for_comparison}
+# draw_cnt <- 1000 # from above
+vals <- vapply(seq(0.02, 0.98, 0.02), function(pfpr) {
+  all_out <- original$pr2rcS(rep(pfpr, draw_cnt), Short = FALSE)
+  keep <- cbind(pfpr = pfpr, kappa = all_out$kappa, rc = all_out$Rc, aeir = all_out$aeir)
+  apply(keep, 2, median)
+}, FUN.VALUE = numeric(4))
+original_df <- data.frame(t(vals))
+```
+
+```{r compare_original}
+df2 <- df[df$rho == 0.0, c("kappa_median", "rc_median", "aeir_median")]
+names(df2)[names(df2) %in% c("kappa_median", "rc_median", "aeir_median")] <- c(
+  "kappa", "rc", "aeir"
+)
+relerr <- function(a, b) { (a - b) / b }
+list(
+rc = max(relerr(df2$rc, original_df$rc)),
+aeir = max(relerr(df2$aeir, original_df$aeir)),
+kappa = max(relerr(df2$kappa, original_df$kappa))
+)
+```
+
+
+```{r}
+rho0 <- 0.5
+nearly <- function(a, b) { abs(a-b) < 1e-7 }
+pfpr_one_rho <- df[nearly(df$rh,rho0), ]
+with(pfpr_one_rho, {
+  plot(pfpr, arnotreat_median, main = sprintf("rho=%3.2f", rho0))
+})
+```
+

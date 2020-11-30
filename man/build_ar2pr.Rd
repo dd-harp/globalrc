@@ -6,6 +6,9 @@
 \usage{
 build_ar2pr(pr_ar_data)
 }
+\arguments{
+\item{pr_ar_data}{This is the table of pr, ar, and rho values.}
+}
 \description{
 This goes the other way, from AR to PR, with rho=0.
 }

@@ -4,6 +4,7 @@
 #' The data calculates attack rate as a function of PR and recovery.
 #' @param pr_to_ar_dt A data.table with columns AR, PR, and rho.
 #' @returns A function with signature function(pr, rho) -> AR.
+#' @export
 ar_of_pr_rho <- function(pr_to_ar_dt) {
   if (length(unique(pr_to_ar_dt$rho[1:4])) < 4) {
     # This is the route taken. flog.debug("PR moves faster in pr_to_ar mesh file.")
@@ -66,6 +67,8 @@ ar_of_pr_rho2 <- function(pr_to_ar_dt) {
 
 
 #' This goes the other way, from AR to PR, with rho=0.
+#' @param pr_ar_data This is the table of pr, ar, and rho values.
+#' @export
 build_ar2pr <- function(pr_ar_data) {
   no_treatment <- pr_ar_data[rho < 1e-6, c("PR", "AR")]
   # The sample data doesn't go all the way to 0 and 1, but that's the asymptotic value.

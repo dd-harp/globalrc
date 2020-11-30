@@ -3,9 +3,9 @@
 #$ -cwd
 #$ -j y
 #$ -o /share/temp/sgeoutput/adolgert/rc_kappa_$JOB_ID_$TASK_ID.txt
-#$ -N rc_split
+#$ -N rc_global
 #$ -l fthread=2
-#$ -t 1-2
+#$ -t 1-${tasks}
 #$ -q all.q
 #$ -l h_rt=3:00:00
 #$ -l m_mem_free=4G
@@ -19,9 +19,9 @@ if [[ -n "${MISSING}" ]]
 then
   export SGE_TASK_ID=`echo $MISSING | cut -d"," -f"${SGE_TASK_ID}"`
 fi
-
-VERSION=201122_1000
 /ihme/singularity-images/rstudio/shells/execRscript.sh \
-  -i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img \
-  -s  rc_run_worker.R --config=rc_kappa.toml --outvars=${VERSION} \
-  --years=2000:2019 --draws=1000 --tasks=1010
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img \
+	-s rc_run_worker.R --config=${config} \
+	--outvars=${outvars} \
+	--years=${years} 	${country} \
+	--draws=${draws} --tasks=${tasks}
