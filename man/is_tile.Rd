@@ -2,20 +2,22 @@
 % Please edit documentation in R/extents.R
 \name{is_tile}
 \alias{is_tile}
-\title{These are the two main data structures. Tiles and blocksizes are measured
-in rows and columns, and they are stored as a numeric vector with names
-"row" and "col". If you forget those, then you get NA. The same goes for
-extents, which all have "rmin", "rmax", "cmin", "cmax" for the mininum and
-maximum of rows and columns. We use these names to make it easier to
-visually ascertain that rows are matched with rows and columns with columns.}
+\title{Check that this is a tile.}
 \usage{
 is_tile(p)
 }
-\description{
+\arguments{
+\item{p}{A vector that should have names \code{row} and \code{col}}
+}
+\value{
+A bool for yes or no.
 These are the two main data structures. Tiles and blocksizes are measured
 in rows and columns, and they are stored as a numeric vector with names
 "row" and "col". If you forget those, then you get NA. The same goes for
 extents, which all have "rmin", "rmax", "cmin", "cmax" for the mininum and
 maximum of rows and columns. We use these names to make it easier to
 visually ascertain that rows are matched with rows and columns with columns.
+}
+\description{
+Check that this is a tile.
 }

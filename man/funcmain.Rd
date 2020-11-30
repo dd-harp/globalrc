@@ -10,14 +10,12 @@ funcmain(args)
 \item{args}{Command-line arguments, after they've been checked.
 
 Use the same arguments as the commandline, but sent in as a list.
-For example,
-\Dontrun{
-args <- check_args(arg_parser(c(
-"--config=gen_scaled_ar/rc_kappa.toml",
-"--country=gmb",
-"--years=2010:2011",
-"--overwrite"
-)))
+For example,\preformatted{args <- check_args(arg_parser(c(
+   "--config=gen_scaled_ar/rc_kappa.toml",
+   "--country=gmb",
+   "--years=2010:2011",
+   "--overwrite"
+   )))
 args$country <- "uga"
 funcmain(args)
 }}

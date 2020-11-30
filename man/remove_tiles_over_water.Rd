@@ -2,14 +2,18 @@
 % Please edit documentation in R/extents.R
 \name{remove_tiles_over_water}
 \alias{remove_tiles_over_water}
-\title{Removes tiles that have all NA for this example slice.
-Tile is within the domain. The sample data is already cut
-to that domain.}
+\title{Removes tiles that have all NA for this example slice.}
 \usage{
 remove_tiles_over_water(available)
 }
-\description{
-Removes tiles that have all NA for this example slice.
+\arguments{
+\item{available}{This is a description of where all tiles are.}
+}
+\value{
+A list of remaining tiles, by row and column, so a 2D array.
 Tile is within the domain. The sample data is already cut
 to that domain.
+}
+\description{
+Removes tiles that have all NA for this example slice.
 }

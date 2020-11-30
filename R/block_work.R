@@ -1,4 +1,5 @@
 #' Find nonzeros in each chunk of tile data to see they loaded.
+#' @param chunks A list of tiles with data.
 chunk_nonzero <- function(chunks) {
     vapply(
         chunks,
@@ -11,6 +12,7 @@ chunk_nonzero <- function(chunks) {
 
 
 #' Find the sum of each chunk of tile data to see they differ.
+#' @param chunks A list of tiles with data.
 chunk_sums <- function(chunks) {
     vapply(
         chunks,
@@ -54,6 +56,9 @@ check_linearized_outputs <- function(results, inputs) {
 
 
 #' Takes an input array in multiple dimensions and linearizes and removes NA.
+#' @param input_list A list of arrays, one for each variable.
+#' @param run_func The function to run over this list.
+#' @return A list of arrays, the output of the `run_func`.
 #' This replaces the outputs back into multiple dimensions after making the call.
 linearized_work <- function(input_list, run_func) {
     # There are NA values in the arrays in the input_list.
@@ -144,7 +149,7 @@ summarize_draws <- function(draws, confidence_percent) {
             MARGIN = c(2, 3, 4),
             # We can ignore NA here b/c we checked earlier, and some pixels
             # _should be all NA_ in water.
-            FUN = function(x) quantile(x, quantiles, na.rm = TRUE)
+            FUN = function(x) stats::quantile(x, quantiles, na.rm = TRUE)
             )
         quantile_last <- aperm(quantile_first, c(2, 3, 4, 1))
         sumd <- list(

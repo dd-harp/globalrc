@@ -14,7 +14,10 @@ and each array has dimnames where each dimension is
 named. Any attributes of those arrays will also be
 saved, if HDF5 will save them. I don't know the rules
 on what it will/won't save, but strings and arrays
-should be good.
+should be good.}
+
+\item{group_name}{The subdirectory in which to place chunks
+within the HDF5 file.
 
 This function is for saving arrays in HDF5.
 We need to save chunks of arrays, with lots of metadata,

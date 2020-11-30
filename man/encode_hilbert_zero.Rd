@@ -2,38 +2,35 @@
 % Please edit documentation in R/hilbert.R
 \name{encode_hilbert_zero}
 \alias{encode_hilbert_zero}
-\title{Computes an integer Hilbert index for x and y using a variant algorithm.
-Given two integer indices for a 2-dimensional plane, return a single index.
-This index is designed to increase locality for 1-dimensional access.
-It does this by keeping nearby points in 2 dimensions also nearby in
-1 dimension.
-The variant algorithm used differs from the usual Hilbert code because it
-doesn't need to know the size of the whole grid before computing the code \link{^1}.
-It looks like a slightly-rotated version of the Hilbert curve, but it
-has the benefit that it is 1-1 between \verb{(x, y)} and \code{z}, so you can translate
-back and forth.
-This function is zero-based. \verb{0 <= x < 2^n}, \verb{0 <= y < 2^n}, and the result
-is \verb{0 <= z < 4^n}.
-See also: \href{@ref}{\code{decode_hilbert_zero}}, \href{@ref}{\code{encode_hilbert}}.
-\link{^1}: N. Chen, N. Wang, B. Shi, A new algorithm for encoding and decoding the
-Hilbert order. Software—Practice and Experience 2007; 37(8): 897–908.}
+\title{Computes an integer Hilbert index for x and y using a variant algorithm.}
 \usage{
 encode_hilbert_zero(x, y)
 }
-\description{
-Computes an integer Hilbert index for x and y using a variant algorithm.
+\arguments{
+\item{x}{An integer x-axis value, 0-based.}
+
+\item{y}{An integer y-axis value, 0-based.}
+}
+\value{
+A hilbert z-value, an integer.
+
 Given two integer indices for a 2-dimensional plane, return a single index.
 This index is designed to increase locality for 1-dimensional access.
 It does this by keeping nearby points in 2 dimensions also nearby in
 1 dimension.
 The variant algorithm used differs from the usual Hilbert code because it
-doesn't need to know the size of the whole grid before computing the code \link{^1}.
+doesn't need to know the size of the whole grid before computing the code.
 It looks like a slightly-rotated version of the Hilbert curve, but it
 has the benefit that it is 1-1 between \verb{(x, y)} and \code{z}, so you can translate
 back and forth.
 This function is zero-based. \verb{0 <= x < 2^n}, \verb{0 <= y < 2^n}, and the result
 is \verb{0 <= z < 4^n}.
-See also: \href{@ref}{\code{decode_hilbert_zero}}, \href{@ref}{\code{encode_hilbert}}.
-\link{^1}: N. Chen, N. Wang, B. Shi, A new algorithm for encoding and decoding the
+
+N. Chen, N. Wang, B. Shi, A new algorithm for encoding and decoding the
 Hilbert order. Software—Practice and Experience 2007; 37(8): 897–908.
+
+See also: \href{@ref}{\code{decode_hilbert_zero}}, \href{@ref}{\code{encode_hilbert}}.
+}
+\description{
+Computes an integer Hilbert index for x and y using a variant algorithm.
 }

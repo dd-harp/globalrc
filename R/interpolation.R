@@ -56,16 +56,6 @@ ar_of_pr_rho <- function(pr_to_ar_dt) {
 }
 
 
-# Keep this for testing the other one. This works for a single value.
-ar_of_pr_rho2 <- function(pr_to_ar_dt) {
-    dt <- pr_to_ar_dt
-    function(pr, rho) {
-        akima::interp(x = dt$rho, y = dt$PR, z = dt$AR, xo = rho, yo = pr,
-        extrap = TRUE)[[3]]
-    }
-}
-
-
 #' This goes the other way, from AR to PR, with rho=0.
 #' @param pr_ar_data This is the table of pr, ar, and rho values.
 #' @export
