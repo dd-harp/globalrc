@@ -32,6 +32,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          remotes::install_cran("BiocManager")
+          BiocManager::install("rhdf5")
           remotes::install_deps(dependencies = TRUE)
           install.packages("pkgdown")
         shell: Rscript {0}
