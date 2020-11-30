@@ -30,13 +30,6 @@ test_that("pixel_bounding_box works has whole boundary correct", {
 })
 
 
-#' If this runs in a situation without data, then skip these tests.
-test_requires_data <- function() {
-    testthat::skip_if_not(
-        dir.exists(rampdata::as.path(rampdata::ramp_path("/globalrc/inputs/PfPR_medians"))))
-}
-
-
 test_that("available_data finds version", {
     test_requires_data()
     rampdata::initialize_workflow(.default.toml)
@@ -50,6 +43,7 @@ test_that("available_data finds version", {
 
 
 test_that("available_data finds UGA outline", {
+    test_requires_data()
     data <- available_data("201029", "uga", NULL)
     expect_lt(unname(data$domain_extent["rmax"]), 1741)
     expect_lt(unname(data$domain_extent["cmax"]), 1681)
