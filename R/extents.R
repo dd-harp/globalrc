@@ -1,5 +1,7 @@
 
-
+#' Check that this is a tile.
+#' @param p A vector that should have names `row` and `col`
+#' @return A bool for yes or no.
 #' These are the two main data structures. Tiles and blocksizes are measured
 #' in rows and columns, and they are stored as a numeric vector with names
 #' "row" and "col". If you forget those, then you get NA. The same goes for
@@ -23,6 +25,10 @@ apply_relative_extent <- function(domain_extent, process_extent) {
 
 
 #' Find where the tile is within the process extent.
+#' @param process_extent An extent vector representing what tiles this process
+#'     neeeds to load.
+#' @param tile_extent An extent vector which is in numbers of tiles.
+#' @return Where the tiles are within the process.
 #' Both are relative to the domain extent.
 find_relative_extent <- function(process_extent, tile_extent) {
     stopifnot(is_extent(process_extent))
@@ -33,6 +39,8 @@ find_relative_extent <- function(process_extent, tile_extent) {
 
 
 #' Removes tiles that have all NA for this example slice.
+#' @param available This is a description of where all tiles are.
+#' @return A list of remaining tiles, by row and column, so a 2D array.
 #' Tile is within the domain. The sample data is already cut
 #' to that domain.
 remove_tiles_over_water <- function(available) {

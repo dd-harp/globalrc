@@ -51,4 +51,3 @@ world_mean_worker:
 
 render:
 	rmarkdown::render("notebooks/check_pixel_work.Rmd")
-	

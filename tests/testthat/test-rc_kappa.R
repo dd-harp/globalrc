@@ -259,11 +259,11 @@ test_that("ar_of_pr_rho fits the function it should", {
 
 test_that("draw_parameters can be used in a with statement", {
     params <- list(r = 0.005, r_sd = 1/3000, b = 0.55, b_shape1 = 55,
-    k = 4.2, kam = 0.6, pfpr_min = 0.02, pfpr_max = 0.98,
-    b_shape2 = 45, c = 0.17, tau = 10, D_low = 5, D_high = 40)
+    k = 4.2, kam = 0.6, pfpr_min = 0.02, pfpr_max = 0.98, r_inv_sd = 5,
+    b_shape2 = 45, c = 0.17, tau = 10, D_low = 5, D_high = 40, s = 1)
     draws <- draw_parameters(params, 100)
     ans = with(draws[37, ], {
-        r * k * b * tau
+        s * k * b * r_inv
     })
     expect_gt(ans, 0)
 })

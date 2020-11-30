@@ -12,6 +12,16 @@
         AR = c(0.0, 0.1, 1.0, 1.0)
     )
 
+
+# Keep this for testing the other one. This works for a single value.
+ar_of_pr_rho2 <- function(pr_to_ar_dt) {
+    dt <- pr_to_ar_dt
+    function(pr, rho) {
+        akima::interp(x = dt$rho, y = dt$PR, z = dt$AR, xo = rho, yo = pr,
+        extrap = TRUE)[[3]]
+    }
+}
+
 test_that("pixel_work works", {
     pfpr <- c(0.0, 0.1, 0.2, 0.3, 0.4)
     am <- c(0.66, 0.6, 0.4, 0.2, 0.0)

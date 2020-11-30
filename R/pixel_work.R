@@ -1,6 +1,7 @@
 
 kappa_rm <- function(pfpr, c) { c * pfpr }
-alpha_from_eir <- function(eir, pfpr, rho) {
+
+alpha_from_eir <- function(eir, pfpr, k, rho, tau) {
   alpha <- 1 - exp(-log(1 + eir * k * tau) / k)
   alpha + ar2pr(pfpr, rho) - ar2pr(pfpr, 0)
 }
@@ -10,19 +11,19 @@ pr2eir=function(x, b=0.55, r=1/200, k=4.2){
   ((1-x)^-k-1)*(r/k/b)
 }
 
-pr2k = function(x, s1=6, s2 = 3, n=1){
+pr2k_bind = function(x, s1=6, s2 = 3, n=1){
   pr = rep(x, each=n)
   mn = 1.5 + s1*(1-pr)^1.3
   vr = .08 + s2*(1-pr)^1.3
-  cbind(pr, pmax(1, rnorm(length(pr), mn, vr)))
+  cbind(pr, pmax(1, stats::rnorm(length(pr), mn, vr)))
 }
 
 
 pr2eirS = function(x, n=1){
   pr = rep(x, each=n)
-  r = rnorm(length(pr), 1/200, 1/3000)
-  k = pr2k(pr)[,2]
-  b = rbeta(length(pr), .55*100, .45*100)
+  r = stats::rnorm(length(pr), 1/200, 1/3000)
+  k = pr2k_bind(pr)[, 2]
+  b = stats::rbeta(length(pr), .55*100, .45*100)
   eir = pmin(((1-pr)^-k-1)*(r/k/b), 1500/365)
   cbind(pr=pr, deir=eir, aeir=eir*365, leir = log10(eir*365))
 }
@@ -31,13 +32,14 @@ pr2eirS = function(x, n=1){
 pr2k_quantile <- function(pfpr, ku, s1=6, s2 = 3) {
   mn <- 1.5 + s1 * (1 - pfpr)^1.3
   vr <- .08 + s2 * (1 - pfpr)^1.3
-  pmax(1, qnorm(ku, mn, vr))
+  pmax(1, stats::qnorm(ku, mn, vr))
 }
 
 pr2k1 = function(x, mx=1.8, s1=4, pw=1.6){
   mx + s1*(1-x)^pw
 }
 
+# There were two of these.
 pr2k = function(x, fac=2.6){
   (pr2k1(x) + pr2k2(x))/fac
 }
@@ -45,7 +47,7 @@ pr2k = function(x, fac=2.6){
 pr2k_three_quantile <- function(pfpr, ku, s1=6, s2 = 2) {
   mn <- pr2k(pfpr)
   vr <- .03 + s2 * (1 - pfpr)^1.3
-  pmax(1, qnorm(ku, mn, vr))
+  pmax(1, stats::qnorm(ku, mn, vr))
 }
 
 pr2deir_quantile <- function(pfpr, r, b, kd) {
@@ -69,11 +71,11 @@ draw_parameters <- function(parameters, N) {
     draw_params <- with(parameters, {
       data.frame(
         kam = rep(kam, N),
-        r_inv = rnorm(N, 1 / r, r_inv_sd),
+        r_inv = stats::rnorm(N, 1 / r, r_inv_sd),
         k = k,
         ku = runif(N),  # Use as quantile within calculation.
-        b = rbeta(N, b * 100, (1 - b) * 100),
-        c = rbeta(N, c * 50, (1 - c) * 50),
+        b = stats::rbeta(N, b * 100, (1 - b) * 100),
+        c = stats::rbeta(N, c * 50, (1 - c) * 50),
         s = s,
         pfpr_min = rep(pfpr_min, N),
         pfpr_max = rep(pfpr_max, N)
@@ -104,7 +106,7 @@ draw_parameters <- function(parameters, N) {
 #' @param pfpr A list of pfpr values.
 #' @param am A list of treatment values, the same length as pfpr.
 #' @param params either a list or data frame, to be used in a with-statement.
-#' @param strategis A list of functions to call to do parts of the work.
+#' @param strategies A list of functions to call to do parts of the work.
 #' @return a list with a member for each variable.
 #' @export
 pixel_four <- function(pfpr, am, params, strategies) {
@@ -152,10 +154,10 @@ draw_parameters_three <- function(parameters, N) {
         draw_params <- with(parameters, {
             data.frame(
                 kam = rep(kam, N),
-                r = rnorm(N, r, r_sd),
+                r = stats::rnorm(N, r, r_sd),
                 k = k,
                 ku = runif(N),  # Use as quantile within calculation.
-                b = rbeta(N, b, b_shape1, b_shape2),
+                b = stats::rbeta(N, b, b_shape1, b_shape2),
                 c = rep(c, N),
                 tau = rep(tau, N),
                 D_low = rep(D_low, N),
@@ -191,7 +193,7 @@ draw_parameters_three <- function(parameters, N) {
 #' @param pfpr A list of pfpr values.
 #' @param am A list of treatment values, the same length as pfpr.
 #' @param params either a list or data frame, to be used in a with-statement.
-#' @param strategis A list of functions to call to do parts of the work.
+#' @param strategies A list of functions to call to do parts of the work.
 #' @return a list with a member for each variable.
 #' @export
 pixel_three <- function(pfpr, am, params, strategies) {
@@ -252,15 +254,17 @@ pixel_three <- function(pfpr, am, params, strategies) {
 
 
 #' Takes a parameter that is an expression (of drawing a distribution) and calls it.
+#' @param parameters A list of floats and integers.
+#' @param N The integer number of parameters to draw. Can be 1 to use means.
 draw_parameters_two <- function(parameters, N) {
     if (N > 1) {
         draw_params <- with(parameters, {
             data.frame(
                 kam = rep(kam, N),
-                r = rnorm(N, r, r_sd),
+                r = stats::rnorm(N, r, r_sd),
                 k = k,
                 ku = runif(N),  # Use as quantile within calculation.
-                b = rbeta(N, b, b_shape1, b_shape2),
+                b = stats::rbeta(N, b, b_shape1, b_shape2),
                 c = rep(c, N),
                 tau = rep(tau, N),
                 D_low = rep(D_low, N),
@@ -286,6 +290,12 @@ draw_parameters_two <- function(parameters, N) {
     draw_params
 }
 
+#' Central calculation for pixel work that has low Rc.
+#' @param pfpr parasite rate.
+#' @param am anti-malarial treatment rate.
+#' @param params Parameters for the math.
+#' @param strategies Functions to apply during calculation.
+#' @return Vectors of results.
 #' This was made with fits to the middle values of PfPR.
 #' It was finished Monday 23 Nov 2020. This was the version sent
 #' to MAP that had reasonable values (c is corrected in last step).

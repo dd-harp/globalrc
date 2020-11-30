@@ -52,20 +52,27 @@ largest_hilbert_z <- function(x, y) {
 )
 
 #' Computes an integer Hilbert index for x and y using a variant algorithm.
+#' 
+#' @param x An integer x-axis value, 0-based.
+#' @param y An integer y-axis value, 0-based.
+#' @return A hilbert z-value, an integer.
+#' 
 #' Given two integer indices for a 2-dimensional plane, return a single index.
 #' This index is designed to increase locality for 1-dimensional access.
 #' It does this by keeping nearby points in 2 dimensions also nearby in
 #' 1 dimension.
 #' The variant algorithm used differs from the usual Hilbert code because it
-#' doesn't need to know the size of the whole grid before computing the code [^1].
+#' doesn't need to know the size of the whole grid before computing the code.
 #' It looks like a slightly-rotated version of the Hilbert curve, but it
 #' has the benefit that it is 1-1 between `(x, y)` and `z`, so you can translate
 #' back and forth.
 #' This function is zero-based. `0 <= x < 2^n`, `0 <= y < 2^n`, and the result
 #' is `0 <= z < 4^n`.
-#' See also: [`decode_hilbert_zero`](@ref), [`encode_hilbert`](@ref).
-#' [^1]: N. Chen, N. Wang, B. Shi, A new algorithm for encoding and decoding the
+#'
+#' N. Chen, N. Wang, B. Shi, A new algorithm for encoding and decoding the
 #' Hilbert order. Software—Practice and Experience 2007; 37(8): 897–908.
+#'
+#' See also: [`decode_hilbert_zero`](@ref), [`encode_hilbert`](@ref).
 #' @export
 encode_hilbert_zero <- function(x, y) {
     z <- 0L

@@ -104,6 +104,8 @@ available_data <- function(input_version, country_code, select_years) {
 
 
 #' Get all the data for a country as a convenience function.
+#' @param country_alpha3 This is the three-letter country code, as in "uga".
+#' @param years A vector of integer years, as in `2000:2020`.
 data_for_country <- function(country_alpha3, years) {
     # The country will be our lat-long outline.
     outline_sf <- gadm_country_shapefile(country_alpha3)

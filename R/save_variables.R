@@ -141,7 +141,7 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
        main = sprintf("log10(%s) %d", name, year),
        useRaster = TRUE
      )
-     dev.off()
+     grDevices::dev.off()
   }
 }
 

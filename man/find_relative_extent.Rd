@@ -2,12 +2,20 @@
 % Please edit documentation in R/extents.R
 \name{find_relative_extent}
 \alias{find_relative_extent}
-\title{Find where the tile is within the process extent.
-Both are relative to the domain extent.}
+\title{Find where the tile is within the process extent.}
 \usage{
 find_relative_extent(process_extent, tile_extent)
 }
+\arguments{
+\item{process_extent}{An extent vector representing what tiles this process
+neeeds to load.}
+
+\item{tile_extent}{An extent vector which is in numbers of tiles.}
+}
+\value{
+Where the tiles are within the process.
+Both are relative to the domain extent.
+}
 \description{
 Find where the tile is within the process extent.
-Both are relative to the domain extent.
 }

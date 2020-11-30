@@ -1,17 +1,24 @@
 Package: globalrc
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R: 
-    c(person(given = "Andrew",
+Title: Computes control reproductive number, Rc, from PfPR and treatment levels
+Version: 0.1.0
+Authors@R: c(
+    person(given = "Andrew",
            family = "Dolgert",
            role = c("aut", "cre"),
            email = "adolgert@uw.edu",
            comment = c(ORCID = "000-0002-6477-7981")),
     person(given = "Dave",
            family = "Smith",
-           role = c("led"),
+           role = c("aut"),
            email = "smitdave@uw.edu"))
+Author: Andrew Dolgert [aut, cre]
+    Dave Smith [aut]
+Maintainer: Andrew Dolgert <adolgert@uw.edu>
 Description: Computes global Rc for malaria from PfPR and treatment rate.
+    The inputs are two rasters, the malaria parasite rate in humans, PfPR,
+    and a measure of treatment rate, AM for anti-malarials. This is a static
+    conversion from those measures to a measure of transmission intensity
+    in a region.
 License: MIT + file LICENSE
 URL: https://github.com/dd-harp/globalrc
 BugReports: https://github.com/dd-harp/globalrc/issues
@@ -26,6 +33,7 @@ Imports:
     data.table,
     docopt,
     futile.logger,
+    fs,
     parallel,
     pracma,
     rampdata,
@@ -34,4 +42,7 @@ Imports:
     rgdal,
     sf,
     sp,
-    tmap
+    tmap,
+    withr
+Remotes:
+    dd-harp/rampdata

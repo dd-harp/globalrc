@@ -74,7 +74,7 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
 #'
 #' Use the same arguments as the commandline, but sent in as a list.
 #' For example,
-#' \Dontrun{
+#' \dontrun{
 #' args <- check_args(arg_parser(c(
 #'    "--config=gen_scaled_ar/rc_kappa.toml",
 #'    "--country=gmb",

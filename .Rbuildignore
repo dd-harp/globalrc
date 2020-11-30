@@ -6,3 +6,5 @@
 ^scripts$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.github$
+Makefile
