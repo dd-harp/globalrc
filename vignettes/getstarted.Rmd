@@ -1,0 +1,148 @@
+---
+title: "Get Started"
+description: >
+  Learn how to run globalrc on a single machine.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get Started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+The `globalrc` code was designed to run within IHME, so it relies on specific file and computing configurations. If you want to run the `globalrc` code on some data, you need to
+
+1. Put the data where the code can find it.
+2. Run either the single-machine or cluster version of the code.
+
+This document describes how to set up the data and how to run the single-machine version of the code. The cluster version of the code splits the input GeoTIFF into spatial blocks and assigns each spatial block, across all years, to a cluster node. The cluster nodes complete their portions, and a final step assembles them into GeoTIFF outputs that are by year.
+
+
+# Get the code
+
+Install HDF5 according to the [Bioconductr HDF5 page](https://www.bioconductor.org/packages/release/bioc/html/rhdf5.html).
+
+Then install the `rampdata` package, which manages input and output directories, and `globalrc` which is the main application.
+
+```{r install_from_github, eval = FALSE}
+remotes::install_github("dd-harp/rampdata")
+remotes::install_github("dd-harp/globalrc")
+```
+
+
+# Configure input parameters
+
+Before we put the data anywhere, let's look at the inputs that the program needs. The program, itself, is in a scripts subdirectory (`scripts/rc_kappa_run.R`), and that script does nothing more than call `main()`.
+
+```{r, eval = FALSE}
+library(globalrc)
+globalrc::main()
+```
+
+You use a configuration file and command-line parameters to tell the program what to do. The command-line parameters decide what years and countries to compute for this run. The configuration file decides input data and parameters, so let's look at that here.
+
+The "roles" are subdirectories of a `projects` directory, described below. The "versions" indicate different versions of those files, for either input or output.
+
+```{toml, eval = FALSE}
+[versions]
+pfpr = "201123_mean"
+am = "201123"
+pr2ar = "201105"
+outvars = "201124_global_median"
+
+[roles]
+pfpr = "/globalrc/inputs/global_pfpr/{{pfpr}}"
+am = "/globalrc/inputs/global_am/{{am}}"
+pr2ar = "/globalrc/outputs/pr2ar_mesh/{{pr2ar}}/pr2ar_mesh.csv"
+outvars = "/globalrc/outputs/basicr/{{outvars}}"
+
+[parameters]
+# These are scientific parameters.
+kam = 0.6  # modifies AM to get rho
+b = 0.55  # biting
+b_shape1 = 55
+b_shape2 = 45
+c = 0.17
+k = 4.2
+r = 0.005  # 1/recovery
+r_sd = 0.0003333333  # 1/3000
+tau = 10  # duration of time period
+D_low = 5  # days with treatment
+D_high = 40  # days without treatment
+random_seed = 9246105
+confidence_percent = 95
+
+[options]
+# These affect computation but not output scientific numbers.
+blocksize = 64
+single_tile_max = 2000
+pngwidth = 2048
+pngheight = 2048
+pngres = 150
+```
+
+This program needs the following inputs, two of which aren't listed in the configuration file.
+
+1. `pfpr` - The MAP PfPR files. This assumes the directory contains GeoTIFFs where each one has a four-digit year. This isn't set up for draws.
+2. `am` - The MAP anti-malarial files. As with PfPR, it expects a directory of GeoTIFFs.
+3. `pr2ar` - This is a model-based prediction of the relationship among PfPR, attack rate, and treatment. It is a CSV with columns "PR", "AR", and "rho". We get this from the Cronus model, and it isn't in the Github repository.
+4. `${RCDATA}/inputs/gadmshape/201104` - We use the GADM shape to make it easier to run the code on a single country, either for output or for debugging. This directory contains a zip of every GADM shapefile, for example `gadm36_UGA_shp.zip`. You could get all the files with one command if you have the Alpha-3 codes for countries: `cat alpha_3.txt | xargs -i wget https://biogeo.ucdavis.edu/data/gadm3.6/shp/gadm36_{}_shp.zip`
+5. `${RCDATA}/inputs/country_outlines/201122` - Outlines for drawing a map at the end, from https://www.naturalearthdata.com/downloads/10m-cultural-vectors/.
+
+
+At the end of the configuration file are "options" that affect how the data is split for parallel processing. The input GeoTIFF is broken into blocks of dimension `blocksize` x `blocksize`. If the input data is smaller than `single_tile_max` x `single_tile_max`, then the program will avoid parallel processing. This makes debugging on small input regions simpler by running within one debuggable process.
+
+
+# Set up input and output directories
+
+Decide in which directory all data will go. Assign that to the `RCDATA` variable in the shell. This script should create directories.
+
+```{bash setup_directories, eval = FALSE}
+export RCDATA="${HOME}/rcdata"
+mkdir -p "${RCDATA}/inputs/gadmshape"
+mkdir -p "${RCDATA}/inputs/country_outlines"
+mkdir -p "${RCDATA}/projects/globalrc/inputs/global_pfpr"
+mkdir -p "${RCDATA}/projects/globalrc/inputs/global_am"
+mkdir -p "${RCDATA}/projects/globalrc/inputs/pr2ar_mesh"
+mkdir -p "${RCDATA}/projects/globalrc/outputs/basicr"
+```
+
+If you have a version of the PfPR, AM, or pr2ar mesh, then make a new subdirectory under those listed above and specify it in the "versions" part of the configuration file.
+
+The code needs to find the `RCDATA` directory, so we tell it in an application configuration 
+file that is separate. Within our group, this file is used for multiple projects. In a file called `~/.config/RAMP/data.ini`, set the `LOCALDATA` in the following.
+```{bash, eval = FALSE}
+[Default]
+SCPHOST = ignore.uw.edu
+SCPHOSTBASE = /ihme/ignore
+LOCALDATA = /home/yourusername/data
+
+[Test]
+SCPHOST = ignore.uw.edu
+SCPHOSTBASE = /ihme/ignore
+LOCALDATA = /home/yourusername/data/test
+```
+The parts about `scp` aren't relevant for this program.
+
+
+# Run the program
+
+We're going to run on the data created above. We use the command line to restrict what subdomain to compute and how many cores to use.
+
+* `--config=<config>` This is the configuration file we edited above.
+* `--country=<alpha3>` If you want to restrict the computation to a rectangle which covers a particular country, specify its Alpha-3 code here. For example the Gambia is `--country=GMB`.
+* `--outvars=<outversion>` Each new run should have its own output version.
+* `--overwrite` If you want to overwrite an output version, you have to assert that with this flag. If not, it will refuse to overwrite.
+* `--years=<year_range>` This is the year span to calculate. For instance, 2000:2019. I'm not sure whether this works if the year range is a single year.
+* `--cores=<core_cnt>` You can tell it how many cores to use. If you don't tell it, it will use all the cores it sees.
+* `--draws=<draw_cnt>` These draws aren't draws of inputs. They are draws from the priors of parameter values within the calculation. This is meant to be run with a draw count above one. We have used 30, 100, or 1000.
+
+An example run:
+```{bash, eval = FALSE}
+JOB_NAME=scheduler_job_name
+VERSION=`date +%y%m%d_%H%M%S`_${JOB_NAME}
+Rscript rc_kappa_run.R --config=rc_kappa.toml --outvars=${VERSION} --years=2000:2019 --cores=${CORES} --draws=100
+```
+
+Using the configuration file above, the output would be in `${RCDATA}/projects/globalrc/outputs/basicr/210128_000000_scheduler_job_name`. It will include both GeoTIFFs and plots for quick review of the data.

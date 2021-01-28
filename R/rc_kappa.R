@@ -85,7 +85,7 @@ prepare_timeseries <- function(data, work, process_extent, blocksize) {
 #' args$country <- "uga"
 #' funcmain(args)
 #' ```
-#' 
+#'
 #' @export
 funcmain <- function(args) {
     # We will want to split this work different ways for development,

@@ -1,3 +1,14 @@
+---
+title: "Intro to Cluster"
+description: >
+  How to login and run on the cluster.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Intro to Cluster}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
 # Run RAMP Analytics on the Cluster
 
 In order to run our code on the cluster, you have to get on the 
@@ -9,7 +20,7 @@ Here are the steps.
 1. Connect to the cluster using Big-EDGE IP VPN.
 2. SSH to the cluster.
 ```
-ssh cluster-submit2.ihme.uw.edu
+ssh <submit-node>.uw.edu
 ```
 
 3. Login to a node. Type this. Wait. You will then be on a node where you can work.
@@ -19,9 +30,9 @@ qlogin -l h_rt=12:00:00,fthread=2,m_mem_free=4G -q i.q -P proj_mmc -now no
 
 If you have one qlogin session and want a second one, look up the hostname
 bu running the command `hostname` in the qlogin,
-do another ssh to the `cluster-submit1` or `cluster-submit2`, and ssh with
+do another ssh to the submit node, and ssh with
 ```
-ssh int-uge-archive-p004.cluster.ihme.uw.edu
+ssh <worker-node>.uw.edu
 ```
 I'm telly you this because it's hard to figure out the full hostname has
 five parts.
