@@ -39,7 +39,6 @@ Imports:
     rampdata,
     raster,
     rhdf5,
-    rgdal,
     sf,
     sp,
     tmap,
