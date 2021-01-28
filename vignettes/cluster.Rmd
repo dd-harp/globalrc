@@ -1,3 +1,14 @@
+---
+title: "Global Rc for Cluster"
+description: >
+  How to run Global Rc on the cluster.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Global Rc for Cluster}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
 # Running rc_kappa
 
 ## Introduction
