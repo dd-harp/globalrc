@@ -146,3 +146,53 @@ with(pfpr_one_rho, {
 })
 ```
 
+Get some plots of inputs and outputs.
+```{r}
+prvals <- seq(0, 0.89, 0.02)
+amvals <- seq(0, 0.6, 0.1)
+vv <- expand.grid(pr = prvals, am = amvals)
+pfdf <- data.frame(pixel_four(vv[, "pr"], vv[, "am"], params, strategies))
+pfdf["pr"] <- vv[, "pr"]
+pfdf["am"] <- vv[, "am"]
+nearby <- function(x, y) {abs(x-y)<0.01}
+df6 <- pfdf[nearby(pfdf$am, 0.6), ]
+df5 <- pfdf[nearby(pfdf$am, 0.5), ]
+df4 <- pfdf[nearby(pfdf$am, 0.4), ]
+df3 <- pfdf[nearby(pfdf$am, 0.3), ]
+df2 <- pfdf[nearby(pfdf$am, 0.2), ]
+df1 <- pfdf[nearby(pfdf$am, 0.1), ]
+df0 <- pfdf[nearby(pfdf$am, 0), ]
+png("effect_treatment6.png")
+plot(df6$pr, df6$pfpr_nt, xlab="PfPR", ylab="PfPR No Treatment",
+     main = "Effect of treatment=0.6 on PfPR estimate")
+lines(c(0, 0.89), c(0, 0.89))
+dev.off()
+```
+```{r}
+png("aeir_0_6.png")
+plot(df6$pr, df6$aeir, xlab="PfPR", ylab="Annual Entomological Inoculation Rate")
+lines(df0$pr, df0$aeir)
+dev.off()
+```
+
+```{r}
+png("alpha_0_6.png")
+plot(df6$pr, df6$alpha, xlab="PfPR", ylab="Attack Rate (Alpha)")
+lines(df0$pr, df0$alpha)
+dev.off()
+```
+
+```{r}
+png("kappa_0_6.png")
+plot(df6$pr, df6$kappa, xlab="PfPR", ylab="Net Infectiousness (Kappa)")
+lines(df0$pr, df0$kappa)
+dev.off()
+```
+
+
+```{r}
+png("rc_0_6.png")
+plot(df6$pr, df6$rc, xlab="PfPR", ylab="Rc")
+lines(df0$pr, df0$rc)
+dev.off()
+```

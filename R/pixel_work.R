@@ -82,17 +82,19 @@ draw_parameters <- function(parameters, N) {
       )
     })
   } else {
-    draw_params <- data.frame(
-      kam = kam,
-      r_inv = 1 / r,
-      k = k,  # mean for k calculation.
-      ku = 0.5,  # Use as quantile within calculation.
-      b = b,
-      c = c,
-      s = s,
-      pfpr_min = pfpr_min,
-      pfpr_max = pfpr_max
-    )
+    draw_params <- with(parameters, {
+      data.frame(
+        kam = kam,
+        r_inv = 1 / r,
+        k = k,  # mean for k calculation.
+        ku = 0.5,  # Use as quantile within calculation.
+        b = b,
+        c = c,
+        s = s,
+        pfpr_min = pfpr_min,
+        pfpr_max = pfpr_max
+      )
+    })
   }
   # If any parameters are less than zero, we should redraw.
   # It's a rejection method to get truncated distributions.
