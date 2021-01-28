@@ -149,9 +149,9 @@ year <- 2018
 for (name in c("alpha", "kappa", "eir", "vc", "rc")) {
     fn <- as.path(add_path(base, file = sprintf("%s_%d.tif", name, year)))
     var <- raster::raster(fn)
-    png(file = sprintf("%s_%d.png", name, year))
+    grDevices::png(file = sprintf("%s_%d.png", name, year))
     plot(var, main = sprintf("%s %d", name, year), useRaster = TRUE)
-    dev.off()
+    grDevices::dev.off()
 }
 
 input_list <- list(
@@ -187,8 +187,8 @@ dim(arr)
 typeof(arr)
 class(arr)
 is.array(arr)
-quantile(arr, c(0.025, 0.5, .975), dim = c(1,2))
-apply(arr, MARGIN = c(2, 3), FUN = function(x) quantile(x, c(0.025, 0.5, 0.975)))
+stats::quantile(arr, c(0.025, 0.5, .975), dim = c(1,2))
+apply(arr, MARGIN = c(2, 3), FUN = function(x) stats::quantile(x, c(0.025, 0.5, 0.975)))
 dim(arr) <- c(2, 4)
 
 qgamma(0.5, c(4, 4), c(1, 2))

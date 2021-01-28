@@ -24,14 +24,14 @@ gadm_country_shapefile <- function(alpha3, admin_level = 0, gadm_version = "2011
     matching <- list.files(pfn, paste0("*_", toupper(alpha3), "_*"))
     if (length(matching) == 1) {
         zip_rp <- rampdata::add_path(gadm_rp, file = matching)
-        inner <- unzip(rampdata::as.path(zip_rp), list = TRUE)
+        inner <- utils::unzip(rampdata::as.path(zip_rp), list = TRUE)
         outline_idx <- grep(paste0("_", admin_level, "."), inner$Name)
         if (length(outline_idx) > 0) {
             inner_fn <- inner$Name[outline_idx]
             unzip_dir <- tempfile()
             country_sf <- tryCatch({
-                unzip(rampdata::as.path(zip_rp), files = inner_fn, exdir = unzip_dir)
-                capture.output({shape <- sf::st_read(unzip_dir)})
+                utils::unzip(rampdata::as.path(zip_rp), files = inner_fn, exdir = unzip_dir)
+                utils::capture.output({shape <- sf::st_read(unzip_dir)})
                 shape
             },
             finally = {

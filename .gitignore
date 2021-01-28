@@ -13,3 +13,4 @@ images/
 notebooks/*.md
 notebooks/*.tex
 *.nb.html
+docs

@@ -6,6 +6,11 @@
 \usage{
 data_for_country(country_alpha3, years)
 }
+\arguments{
+\item{country_alpha3}{This is the three-letter country code, as in "uga".}
+
+\item{years}{A vector of integer years, as in \code{2000:2020}.}
+}
 \description{
 Get all the data for a country as a convenience function.
 }

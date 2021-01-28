@@ -1,3 +1,7 @@
+<!-- badges: start -->
+[![R build status](https://github.com/dd-harp/globalrc/workflows/R-CMD-check/badge.svg)](https://github.com/dd-harp/globalrc/actions)
+<!-- badges: end -->
+
 # Global Rc
 
 Calculates malaria's control reproductive number (Rc) from malaria parasite prevalence (PfPR)

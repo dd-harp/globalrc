@@ -20,7 +20,7 @@ pr2kS = function(x, s1=6, s2 = 2, n=1, short=TRUE){
   pr = rep(x, each=n)
   mn = pr2k(pr)
   vr = .03 + s2*(1-pr)^1.3
-  kk = pmax(1, rnorm(length(pr), mn, vr))
+  kk = pmax(1, stats::rnorm(length(pr), mn, vr))
   if(short==TRUE) return(kk) else return(cbind(pr, kk))
 }
 
@@ -47,7 +47,7 @@ pr2rcS = function(x, rho=0, b=0.55, r=1/200, s=1, c = 0.175, k=NULL, k2=0, pw=1,
   alpha = pr2ar(pr, rho)
   pr1 = ar2pr(alpha, 0)
   L = length(pr)
-  rr = 1/rnorm(L,1/r,5)
+  rr = 1/stats::rnorm(L,1/r,5)
   cc = rbeta(L, c*50, (1-c)*50)
   D = cc/rr
   k = pr2kS(pr)

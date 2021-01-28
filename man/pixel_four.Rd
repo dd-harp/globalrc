@@ -14,7 +14,7 @@ pixel_four(pfpr, am, params, strategies)
 
 \item{params}{either a list or data frame, to be used in a with-statement.}
 
-\item{strategis}{A list of functions to call to do parts of the work.}
+\item{strategies}{A list of functions to call to do parts of the work.}
 }
 \value{
 a list with a member for each variable.

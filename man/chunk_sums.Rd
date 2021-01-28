@@ -6,6 +6,9 @@
 \usage{
 chunk_sums(chunks)
 }
+\arguments{
+\item{chunks}{A list of tiles with data.}
+}
 \description{
 Find the sum of each chunk of tile data to see they differ.
 }
