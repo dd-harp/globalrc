@@ -25,13 +25,13 @@ Install HDF5 according to the [Bioconductr HDF5 page](https://www.bioconductor.o
 
 Then install the `rampdata` package, which manages input and output directories, and `globalrc` which is the main application.
 
-```{r install_from_github}
+```{r install_from_github, eval = FALSE}
 remotes::install_github("dd-harp/rampdata")
 remotes::install_github("dd-harp/globalrc")
 ```
 
 
-# Configure the input parameters
+# Configure input parameters
 
 Before we put the data anywhere, let's look at the inputs that the program needs. The program, itself, is in a scripts subdirectory (`scripts/rc_kappa_run.R`), and that script does nothing more than call `main()`.
 
@@ -112,7 +112,7 @@ If you have a version of the PfPR, AM, or pr2ar mesh, then make a new subdirecto
 
 The code needs to find the `RCDATA` directory, so we tell it in an application configuration 
 file that is separate. Within our group, this file is used for multiple projects. In a file called `~/.config/RAMP/data.ini`, set the `LOCALDATA` in the following.
-```
+```{bash, eval = FALSE}
 [Default]
 SCPHOST = ignore.uw.edu
 SCPHOSTBASE = /ihme/ignore
@@ -126,12 +126,12 @@ LOCALDATA = /home/yourusername/data/test
 The parts about `scp` aren't relevant for this program.
 
 
-# Running the program
+# Run the program
 
 We're going to run on the data created above. We use the command line to restrict what subdomain to compute and how many cores to use.
 
 * `--config=<config>` This is the configuration file we edited above.
-* `--country=<alpha3>` If you want to restrict the computation to a rectangle which covers a particular country, specify its Alpha-3 code here.
+* `--country=<alpha3>` If you want to restrict the computation to a rectangle which covers a particular country, specify its Alpha-3 code here. For example the Gambia is `--country=GMB`.
 * `--outvars=<outversion>` Each new run should have its own output version.
 * `--overwrite` If you want to overwrite an output version, you have to assert that with this flag. If not, it will refuse to overwrite.
 * `--years=<year_range>` This is the year span to calculate. For instance, 2000:2019. I'm not sure whether this works if the year range is a single year.
@@ -139,7 +139,7 @@ We're going to run on the data created above. We use the command line to restric
 * `--draws=<draw_cnt>` These draws aren't draws of inputs. They are draws from the priors of parameter values within the calculation. This is meant to be run with a draw count above one. We have used 30, 100, or 1000.
 
 An example run:
-```{bash}
+```{bash, eval = FALSE}
 JOB_NAME=scheduler_job_name
 VERSION=`date +%y%m%d_%H%M%S`_${JOB_NAME}
 Rscript rc_kappa_run.R --config=rc_kappa.toml --outvars=${VERSION} --years=2000:2019 --cores=${CORES} --draws=100
