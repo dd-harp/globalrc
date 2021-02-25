@@ -11,6 +11,7 @@ If we know the PfPR and some information on treatment rates, this converts
 those numbers into an estimate of Rc. That estimate is one way to understand
 transmission intensity in a region.
 
+![Data blocks for computation on the globe](./vignettes/africa_blocked.png)
 
 # Installation
 
