@@ -4,6 +4,8 @@
 
 # Global Rc
 
+![Data blocks for computation on the globe](./vignettes/africa_blocked.png)
+
 Calculates malaria's control reproductive number (Rc) from malaria parasite prevalence (PfPR)
 and treatment rates.
 
