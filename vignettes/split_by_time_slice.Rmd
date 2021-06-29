@@ -1,0 +1,35 @@
+---
+title: "Design to split by time slice"
+output: html_notebook
+---
+
+# Introduction
+
+This project is an application that reads data from the Malaria Atlas Project (MAP) and creates a map of Global $R_c$ for malaria. It expects input data that covers a large region of the globe, such as all of Africa, all of southeast Asia, or all of the world, and that covers a range of time as a time series. Because the input data is large, the application splits the processing work across multiple computers.
+
+The current version of the application is written to support time series calculations. It assumes that any calculation of global $R_c$ will want to look at all past and future time values for any given pixel. Because of this the application splits the data so that all data from one pixel, across all times, is available at once for computation. The problem with this is that our current calculation doesn't take time into account, so this choice isn't needed right now. Splitting the data across space, keeping it grouped by time, makes the application much more complicated.
+
+This design note accompanies a Git branch called `feature/split-by-time-slice`, which will modify the existing code to make a shorter, clearer application, that splits the data by single time slices. It will be simpler because the input data is by time slice, so that will match up. It should also be faster because there is less movement of the data, less overall processing to do.
+
+# Scope and Goals
+
+The scope of this work is to perform _the same work,_ with no modification, but to do it more simply. Modifying the math is out of scope. Improving the parallelism is out of scope.
+
+1. Make a new main script.
+2. Operate on a single time slice of that data, inside a for-loop over slices.
+
+# Design
+
+The mathematical core of this application is in two functions, the `draw_parameters` function and the `pixel_work` functions. The `draw_parameters` takes input parameters for priors and draws parameters for distributions. These parameters are then input to the `pixel_work` functions that do the calculation. The design should ensure these work the same way.
+
+1. Make the tricycle version. This reads one input image computes it, and saves the result.
+
+   a. Make a new main and tear out a minimal version.
+   
+   b. Modify the code in `block_work` that transforms the data by rotating axes into a pixel space.
+
+2. Put that tricycle into a for-loop.
+
+3. Add back the ability to restrict the computation to a single country, to a few years.
+
+4. Check the input parameters to ensure they match the new computation.
