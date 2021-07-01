@@ -161,6 +161,7 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
     ))
 
     outline_rp <- rampdata::ramp_path("/inputs/country_outlines/201122")
+    # Use capture to quiet the text that sf spews.
     capture.output({admin0 <- sf::st_read(rampdata::as.path(rampdata::add_path(
         outline_rp, file = "ne_10m_admin_0_countries_lakes")))})
 
@@ -179,7 +180,6 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
         for (year_idx in 1:length(years)) {
             year <- years[year_idx]
             out_rp <- rampdata::add_path(dest_dir, file = paste0(name, "_", year, ".tif"))
-            # XXX I'm worried that this should be transposed.
             tile_sized_data <- by_year[, , year_idx]
             ready_data <- tile_sized_data[1:row_cnt, 1:col_cnt]
             out_fn <- rampdata::as.path(out_rp)

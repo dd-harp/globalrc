@@ -22,11 +22,15 @@ c = 0.17
 k = 4.2
 r = 0.005  # 1/recovery
 r_sd = 0.0003333333  # 1/3000
+r_inv_sd = 5
+s = 1
 tau = 10  # duration of time period
 D_low = 5  # days with treatment
 D_high = 40  # days without treatment
 random_seed = 24243299
 confidence_percent = 95
+pfpr_min = 0.02
+pfpr_max = 0.98
 
 [options]
 # These affect computation but not output scientific numbers.

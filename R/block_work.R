@@ -65,11 +65,12 @@ linearized_work <- function(input_list, run_func) {
     # The arrays are probably three-dimensional.
     not_available <- lapply(input_list, function(check) is.na(check))
     input_dims <- dim(input_list[[1]])
-    stopifnot(length(input_dims) == 3)
+    stopifnot(length(input_dims) %in% c(2, 3))
     dim_keep <- length(input_dims)
     # If any array has an NA in a position in the array, then that position is
     # thrown out for all input arrays.
-    keep <- !rowSums(array(do.call(c, not_available), dim = c(input_dims, 2)), dims = dim_keep)
+    keep <- !rowSums(array(do.call(c, not_available), dim = c(input_dims, 2)),
+                     dims = dim_keep)
     linear <- lapply(input_list, function(data) {
         as.numeric(data[keep])
     })
@@ -82,7 +83,7 @@ linearized_work <- function(input_list, run_func) {
         # Don't call the function with no data, but how do we know
         # variable names? Call the function with small, fake data.
         just_names <- run_func(list(pfpr=c(0.1), am = c(0.02)))
-    results <- lapply(just_names, function(x) numeric(0))
+        results <- lapply(just_names, function(x) numeric(0))
     }
 
     # The returned values will have NA for the same pattern in all outputs.
@@ -132,7 +133,8 @@ summarize_draws <- function(draws, confidence_percent) {
     draw_cnt <- length(draws)
     array_names <- names(draws[[1]])
     array_dim <- dim(draws[[1]][[1]])
-    stopifnot(length(array_dim) == 3)
+    stopifnot(length(array_dim) %in% c(2, 3))
+    nd <- length(array_dim)
     summarized <- lapply(array_names, function(name) {
         var_data <- array(
             do.call(
@@ -143,34 +145,51 @@ summarize_draws <- function(draws, confidence_percent) {
                 ),
             dim = c(array_dim, draw_cnt)
         )
-        draws_first <- aperm(var_data, c(4, 1, 2, 3))
+        draws_first <- aperm(var_data, c(nd + 1, 1:nd))
         quantile_first <-apply(
             draws_first,
-            MARGIN = c(2, 3, 4),
+            MARGIN = 2:(nd + 1),  # (2, 3, 4)
             # We can ignore NA here b/c we checked earlier, and some pixels
             # _should be all NA_ in water.
             FUN = function(x) stats::quantile(x, quantiles, na.rm = TRUE)
             )
-        quantile_last <- aperm(quantile_first, c(2, 3, 4, 1))
-        sumd <- list(
-            lower = quantile_last[, , , 1, drop= FALSE],
-            median = quantile_last[, , , 2, drop= FALSE],
-            upper = quantile_last[, , , 3, drop= FALSE]
-        )
+        quantile_last <- aperm(quantile_first, c(2:(nd + 1), 1)) # 2, 3, 4, 1
+        if (nd == 3) {
+          sumd <- list(
+              lower = quantile_last[, , , 1, drop = FALSE],
+              median = quantile_last[, , , 2, drop = FALSE],
+              upper = quantile_last[, , , 3, drop = FALSE]
+          )
+        } else if (nd == 2) {
+          sumd <- list(
+            lower = quantile_last[, , 1, drop = FALSE],
+            median = quantile_last[, , 2, drop = FALSE],
+            upper = quantile_last[, , 3, drop = FALSE]
+          )
+        } else {
+            stop("number of dimension should be 2 or 3 for sumd")
+        }
         sumd <- lapply(sumd, function(x) {
             pre_dim <- dim(x)
-            dim(x) <- pre_dim[1:3]
+            dim(x) <- pre_dim[1:nd]
             x
         })
-        stopifnot(length(dim(sumd[["median"]])) == 3)
+        stopifnot(length(dim(sumd[["median"]])) == nd)
         sumd
     })
     names(summarized) <- array_names
     flattened <- flatten_draws(summarized)
-    lapply(flattened, function(x) {
-      dimnames(x) <- list(year=NULL, row=NULL, col=NULL)
-      x
-    })
+    if (nd == 3) {
+        lapply(flattened, function(x) {
+        dimnames(x) <- list(year=NULL, row=NULL, col=NULL)
+        x
+      })
+    } else {
+      lapply(flattened, function(x) {
+        dimnames(x) <- list(row=NULL, col=NULL)
+        x
+      })
+    }
 }
 
 

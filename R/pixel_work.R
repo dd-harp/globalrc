@@ -143,7 +143,8 @@ pixel_four <- function(pfpr, am, params, strategies) {
 }
 
 
-#' Takes a parameter that is an expression (of drawing a distribution) and calls it.
+#' Takes a parameter that is an expression (of drawing a distribution) and
+#' calls it.
 #' @param parameters The config file parameters, no draws on input.
 #' @param N the number of draws to make. Can be 1 for no draws.
 #' @return A data frame with one row per draw, even if it's one.
