@@ -53,7 +53,7 @@ slice_funcmain <- function(args) {
     s
   })
   write_output(
-    multiyear, years, available$domain_dimensions, load_extent,
+    multiyear, years, available$domain_dimensions, available$domain_extent,
     args, options
     )
 }

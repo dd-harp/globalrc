@@ -69,17 +69,24 @@ data <- globalrc:::load_data(args$config, args$pr2ar, load_extent, year)
 ```
 
 ```{r}
+library(futile.logger)
+library(globalrc)
 test_toml <- rprojroot::is_r_package$find_file("inst/testdata/rc_kappa.toml")
 config_arg <- paste(
   paste0("--config=", test_toml),
-  "--draws=2"
+  "--draws=3"
 )
 args <- globalrc::check_args(globalrc:::arg_parser(config_arg))
-res <- slice_funcmain(args)
+res <- globalrc:::slice_funcmain(args)
 ```
 ```{r}
   multiyear <- lapply(res, function(s) {
     dim(s) <- c(1, dim(s))
     s
   })
+  globalrc:::write_output(
+    multiyear, years, available$domain_dimensions, available$domain_extent,
+    args, options
+    )
+
 ```

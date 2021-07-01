@@ -112,6 +112,7 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
   kind <- parts[1]
   quantile <- parts[2]
 
+  tmap::tmap_options(check.and.fix = TRUE)
   if (kind %in% names(.plot.kinds)) {
     aplot <- tmap::tm_shape(raster_obj) +
       tmap::tm_raster(
@@ -202,9 +203,16 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
                 raster::writeRaster(raster_obj, filename = out_fn, format = "GTiff")
 
                 png_rp <- rampdata::add_path(out_rp, file = sprintf("%s_%d.png", name, year))
-		png_fn <- rampdata::as.path(png_rp)
+		            png_fn <- rampdata::as.path(png_rp)
                 flog.info(paste("writing file", png_fn))
-                plot_as_png(raster_obj, png_fn, name, year, options, admin0)
+                tryCatch({
+                  plot_as_png(raster_obj, png_fn, name, year, options, admin0)
+                },
+                error = function(cond) {
+                  # Don't let a failed plot stop us from saving results.
+                  message(paste("Could not plot", png_fn))
+                  message(cond)
+                })
             } else {
                 flog.error(paste("cannot overwrite", out_fn))
             }
