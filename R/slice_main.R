@@ -29,33 +29,36 @@ slice_funcmain <- function(args) {
   # What can be done and which part we choose to do.
   available <- available_data(args$inversion, args$country, args$years)
   load_extent <- available$domain_extent
-  years <- available$year[1]
-  data <- load_data(args$config, args$pr2ar, load_extent, years)
 
-  params <- data$parameters
-  # Uses the parallel random generation from the `parallel` package.
-  set.seed(params$random_seed, "L'Ecuyer")
-  draws <- ifelse(is.null(args$draws), 100, args$draws)
-  draw_params <- draw_parameters(params, draws)
-  thread_out_dir <- globalrc:::build_outvars_dir(args$outvars)
-  chunk <- list(
-    am = data$am$`2000`,
-    pfpr = data$pfpr$`2000`
-  )
-  list_of_summaries <- over_block_draw(
-    chunk,
-    draw_params,
-    data$pr_to_ar_dt,
-    params$confidence_percent
-  )
-  multiyear <- lapply(list_of_summaries, function(s) {
-    dim(s) <- c(1, dim(s))
-    s
-  })
-  write_output(
-    multiyear, years, available$domain_dimensions, available$domain_extent,
-    args, options
+  for (year in available$year) {
+    data <- load_data(args$config, args$pr2ar, load_extent, year)
+
+    params <- data$parameters
+    # Uses the parallel random generation from the `parallel` package.
+    set.seed(params$random_seed, "L'Ecuyer")
+    draws <- ifelse(is.null(args$draws), 100, args$draws)
+    draw_params <- draw_parameters(params, draws)
+    thread_out_dir <- globalrc:::build_outvars_dir(args$outvars)
+
+    chunk <- list(
+      am = data$am[[as.character(year)]],
+      pfpr = data$pfpr[[as.character(year)]]
     )
+    list_of_summaries <- over_block_draw(
+      chunk,
+      draw_params,
+      data$pr_to_ar_dt,
+      params$confidence_percent
+    )
+    multiyear <- lapply(list_of_summaries, function(s) {
+      dim(s) <- c(1, dim(s))
+      s
+    })
+    write_output(
+      multiyear, year, available$domain_dimensions, available$domain_extent,
+      args, options
+      )
+  }
 }
 
 
