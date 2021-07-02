@@ -1,0 +1,64 @@
+---
+title: "Design to split by time slice"
+output: html_notebook
+---
+
+# Introduction
+
+This project is an application that reads data from the Malaria Atlas Project (MAP) and creates a map of Global $R_c$ for malaria. It expects input data that covers a large region of the globe, such as all of Africa, all of southeast Asia, or all of the world, and that covers a range of time as a time series. Because the input data is large, the application splits the processing work across multiple computers.
+
+The current version of the application is written to support time series calculations. It assumes that any calculation of global $R_c$ will want to look at all past and future time values for any given pixel. Because of this the application splits the data so that all data from one pixel, across all times, is available at once for computation. The problem with this is that our current calculation doesn't take time into account, so this choice isn't needed right now. Splitting the data across space, keeping it grouped by time, makes the application much more complicated.
+
+This design note accompanies a Git branch called `feature/split-by-time-slice`, which will modify the existing code to make a shorter, clearer application, that splits the data by single time slices. It will be simpler because the input data is by time slice, so that will match up. It should also be faster because there is less movement of the data, less overall processing to do.
+
+# Scope and Goals
+
+The scope of this work is to perform _the same work,_ with no modification, but to do it more simply. Modifying the math is out of scope. Improving the parallelism is out of scope.
+
+1. Make a new main script.
+2. Operate on a single time slice of that data, inside a for-loop over slices.
+
+# Design
+
+The mathematical core of this application is in two functions, the `draw_parameters` function and the `pixel_work` functions. The `draw_parameters` takes input parameters for priors and draws parameters for distributions. These parameters are then input to the `pixel_work` functions that do the calculation. The design should ensure these work the same way.
+
+1. Make the tricycle version. This reads one input image computes it, and saves the result.
+
+   a. Make a new main and tear out a minimal version.
+   
+   b. Modify the code in `block_work` that transforms the data by rotating axes into a pixel space.
+
+2. Put that tricycle into a for-loop.
+
+3. Add back the ability to restrict the computation to a single country, to a few years.
+
+4. Check the input parameters to ensure they match the new computation.
+
+
+# Example of Running the Code
+
+This example runs the code from a script. The `slice_funcmain()` function will always load the whole map, one year at a time, and perform calculations on that year.
+```{r, eval = FALSE}
+library(futile.logger)
+library(globalrc)
+test_toml <- rprojroot::is_r_package$find_file("inst/testdata/rc_kappa.toml")
+config_arg <- paste(
+  paste0("--config=", test_toml),
+  "--draws=3",
+  "--years=2001:2001"
+)
+args <- globalrc::check_args(globalrc:::arg_parser(config_arg))
+res <- globalrc:::slice_funcmain(args)
+```
+
+# Memory Problems
+
+Rewriting the `main()` for this code reminded me why I didn't write it this way in the first place. Memory usage is a problem. When we sent the code to MAP, they had trouble running the multi-process version of the code because it wanted more than 500 GB. We can explain this: If the image is 1600 x 1800 pixels (the size of MAP's Africa section), and we do 100 draws, we save an image for each draw, and each draw saves about eight variables as outputs. Each pixel is a double, which is 8 bytes, so that's at least 17 GB for a single year. Given that this is R, expect memory use to be five times this. If the map is of the whole world, or if we want to compute all years on the same machine, or if we want to use 1000 draws, then we face memory problems.
+
+There are a couple of ways around this. We can either break the work into smaller pieces, or we can reduce memory usage of the basic algorithm. The first solution is _already implemented._ This code can be run in a distributed mode which splits each tile into many spatial domains, each of which is computed in a separate process. This solution is exact.
+
+Alternatively, we can make the single-process computation work with an inexact algorithm to compute quantiles without storing all of the draws. There are several such algorithms, and they use between O(1) and O(sqrt(n)) of the draws. Here are some references to start:
+
+ * Liechty, John C and Lin, Dennis K. J. and McDermott, James P., "Single-pass low-storage arbitrary quantile estimation for massive datasets," Statistics and Computing 13, 91-100, 2003.
+ 
+ * Jain, Raj and Chlamtac, Imrich, "The $P^2$ algorithm for dynamic calculation of quantiles and histograms without storing observations," Communications of the ACM: Simulation Modeling and Statistical Computing, 28, 70, 1076-1085, 1985.

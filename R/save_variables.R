@@ -112,6 +112,7 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
   kind <- parts[1]
   quantile <- parts[2]
 
+  tmap::tmap_options(check.and.fix = TRUE)
   if (kind %in% names(.plot.kinds)) {
     aplot <- tmap::tm_shape(raster_obj) +
       tmap::tm_raster(
@@ -161,6 +162,7 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
     ))
 
     outline_rp <- rampdata::ramp_path("/inputs/country_outlines/201122")
+    # Use capture to quiet the text that sf spews.
     capture.output({admin0 <- sf::st_read(rampdata::as.path(rampdata::add_path(
         outline_rp, file = "ne_10m_admin_0_countries_lakes")))})
 
@@ -179,7 +181,6 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
         for (year_idx in 1:length(years)) {
             year <- years[year_idx]
             out_rp <- rampdata::add_path(dest_dir, file = paste0(name, "_", year, ".tif"))
-            # XXX I'm worried that this should be transposed.
             tile_sized_data <- by_year[, , year_idx]
             ready_data <- tile_sized_data[1:row_cnt, 1:col_cnt]
             out_fn <- rampdata::as.path(out_rp)
@@ -202,9 +203,16 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
                 raster::writeRaster(raster_obj, filename = out_fn, format = "GTiff")
 
                 png_rp <- rampdata::add_path(out_rp, file = sprintf("%s_%d.png", name, year))
-		png_fn <- rampdata::as.path(png_rp)
+		            png_fn <- rampdata::as.path(png_rp)
                 flog.info(paste("writing file", png_fn))
-                plot_as_png(raster_obj, png_fn, name, year, options, admin0)
+                tryCatch({
+                  plot_as_png(raster_obj, png_fn, name, year, options, admin0)
+                },
+                error = function(cond) {
+                  # Don't let a failed plot stop us from saving results.
+                  message(paste("Could not plot", png_fn))
+                  message(cond)
+                })
             } else {
                 flog.error(paste("cannot overwrite", out_fn))
             }
