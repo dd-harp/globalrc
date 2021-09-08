@@ -147,6 +147,17 @@ plot_as_png <- function(raster_obj, filename, name, year, options, admin0) {
 }
 
 
+add_source_scripts <- function(dest_dir) {
+  source_files <- list.files(system.file("testdata/R", package="globalrc"),
+                             full.names = TRUE)
+  if (length(source_files) > 0) {
+    dest_r <- file.path(dest_dir, "R")
+    dir.create(dest_r, showWarnings = FALSE)
+    file.copy(source_files, dest_r)
+  }
+}
+
+
 #' Given outputs for a tile, write them to a folder.
 #' @param output A list of results.
 #' @param years Years that will save.
@@ -191,6 +202,7 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
             }
             if (!exists) {
                 flog.info(paste("writing file", out_fn))
+                rampdata::prov.output.file(out_fn, "rc")
                 raster_obj <- raster::raster(
                     nrows = row_cnt, ncols = col_cnt,
                     xmn = domain_dimensions$xmin,
@@ -207,6 +219,7 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
                 flog.info(paste("writing file", png_fn))
                 tryCatch({
                   plot_as_png(raster_obj, png_fn, name, year, options, admin0)
+                  rampdata::prov.output.file(png_fn, "image")
                 },
                 error = function(cond) {
                   # Don't let a failed plot stop us from saving results.
@@ -218,4 +231,9 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
             }
         }
     }
+    file_io_fn <- rampdata::as.path(rampdata::add_path(
+        dest_dir, file = "roles.toml"))
+    flog.info(paste("Writing provenance toml to", file_io_fn))
+    rampdata::write.meta.data(file_io_fn)
+    add_source_scripts(rampdata::as.path(dest_dir))
 }

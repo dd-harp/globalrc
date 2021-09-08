@@ -213,7 +213,9 @@ data_for_country <- function(country_alpha3, years) {
 load_data <- function(config, pr2ar_version, domain_extent, years) {
     parameters <- configr::read.config(config)[["parameters"]]
     pr2ar_rp <- rampdata::workflow_path("pr2ar")
-    pr_to_ar_dt <- data.table::fread(rampdata::as.path(pr2ar_rp))
+    pr2ar_fn <- rampdata::as.path(pr2ar_rp)
+    rampdata::prov.input.file(pr2ar_fn, "pr2ar")
+    pr_to_ar_dt <- data.table::fread(pr2ar_fn)
     pfpr_dir <- rampdata::workflow_path("pfpr")
     am_dir <- rampdata::workflow_path("am")
     pfpr_yearly <- years_in_filenames(list.files(rampdata::as.path(pfpr_dir)))
@@ -246,8 +248,12 @@ load_data <- function(config, pr2ar_version, domain_extent, years) {
             stop(msg)
         }
 
-        pfpr <- raster::raster(rampdata::as.path(pfpr_file))
-        am <- raster::raster(rampdata::as.path(am_file))
+        pfpr_full_fn <- rampdata::as.path(pfpr_file)
+        rampdata::prov.input.file(pfpr_full_fn, "pfpr_input")
+        pfpr <- raster::raster(pfpr_full_fn)
+        am_full_fn <- rampdata::as.path(am_file)
+        rampdata::prov.input.file(am_full_fn, "am_input")
+        am <- raster::raster(am_full_fn)
 
         load_extent <- c(
             domain_extent["rmin"],

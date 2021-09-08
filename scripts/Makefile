@@ -2,6 +2,9 @@ rc_test:
 	Rscript rc_kappa_run.R --config=rc_kappa.toml --country=gmb \
 	  --outvars=test --overwrite --years=2010:2011 --cores=1 --draws=3
 
+grc:
+	R -e 'devtools::install("~/dev/globalrc", upgrade = "never")'
+
 rc_single:
 	Rscript rc_kappa_run.R --config=rc_kappa.toml --country=gmb \
 	  --outvars=test --overwrite --years=2011:2011 --cores=1 --draws=3
@@ -17,6 +20,10 @@ rc_uga_single:
 rc_world:
 	Rscript rc_kappa_run.R --config=rc_kappa.toml \
 	  --outvars=test --overwrite --years=2010:2011 --cores=4 --draws=3
+
+cmr:
+	Rscript rc_kappa_run.R --config=201125_world.toml --country=cmr \
+	  --outvars=210907_cmr --overwrite --years=2019:2019 --cores=8 --draws=1000
 
 rc_cluster_test:
 	/ihme/singularity-images/rstudio/shells/execRscript.sh \
