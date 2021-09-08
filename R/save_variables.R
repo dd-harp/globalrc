@@ -153,7 +153,7 @@ add_source_scripts <- function(dest_dir) {
   if (length(source_files) > 0) {
     dest_r <- file.path(dest_dir, "R")
     dir.create(dest_r, showWarnings = FALSE)
-    file.copy(source_files, dest_r)
+    file.copy(source_files, dest_r, overwrite = TRUE)
   }
 }
 
