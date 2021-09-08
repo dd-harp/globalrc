@@ -202,7 +202,6 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
             }
             if (!exists) {
                 flog.info(paste("writing file", out_fn))
-                rampdata::prov.output.file(out_fn, "rc")
                 raster_obj <- raster::raster(
                     nrows = row_cnt, ncols = col_cnt,
                     xmn = domain_dimensions$xmin,
@@ -213,6 +212,7 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
                 )
                 raster_obj <- raster::setValues(raster_obj, ready_data)
                 raster::writeRaster(raster_obj, filename = out_fn, format = "GTiff")
+                rampdata::prov.output.file(out_fn, "rc")
 
                 png_rp <- rampdata::add_path(out_rp, file = sprintf("%s_%d.png", name, year))
 		            png_fn <- rampdata::as.path(png_rp)

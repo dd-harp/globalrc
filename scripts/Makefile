@@ -3,6 +3,7 @@ rc_test:
 	  --outvars=test --overwrite --years=2010:2011 --cores=1 --draws=3
 
 grc:
+	R -e 'devtools::install("~/dev/rampdata", upgrade = "never")'
 	R -e 'devtools::install("~/dev/globalrc", upgrade = "never")'
 
 rc_single:
