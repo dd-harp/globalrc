@@ -236,4 +236,7 @@ write_output <- function(output, years, domain_dimensions, domain_extent, args, 
     flog.info(paste("Writing provenance toml to", file_io_fn))
     rampdata::write.meta.data(file_io_fn)
     add_source_scripts(rampdata::as.path(dest_dir))
+    file.copy(args$config,
+               file.path(rampdata::as.path(dest_dir), basename(args$config)),
+               overwrite = TRUE)
 }
