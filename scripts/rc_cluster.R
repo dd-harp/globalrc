@@ -44,6 +44,7 @@ request a number of tasks to put in the worker.
 
 # Examine the data to find size of tiles.
 make_plan <- function() {
+  flog.info("make_plan")
   plan_args <- globalrc::check_args(globalrc::arg_parser())
   tile_cnt <- construct_plan(plan_args)
   tile_cnt
@@ -52,6 +53,7 @@ make_plan <- function() {
 
 # These are values to replace in template scripts.
 build_replaces <- function(args, task_cnt) {
+  flog.info("build_replaces")
   if (!is.null(args$country)) {
     country_str <- sprintf("--country=%s", args$country)
   } else {
@@ -73,6 +75,7 @@ build_replaces <- function(args, task_cnt) {
 
 # If the person specified it, then don't go get one.
 get_task_cnt <- function(tile_cnt, task_cnt) {
+  flog.info("get_task_cnt")
   if (is.null(task_cnt)) {
     msg <- sprintf("How many tasks for %d tiles? ", tile_cnt)
     #task_cnt_str <- readline(prompt = msg)
@@ -86,6 +89,7 @@ get_task_cnt <- function(tile_cnt, task_cnt) {
 
 # Reads a template and writes something with the version name.
 make_script <- function(replaces, role) {
+  flog.info("make_script")
   base <- sprintf("rc_%s_base.sh", role)
   base_worker <- readLines(base)
   write_it <- with(replaces, {

@@ -6,6 +6,17 @@ grc:
 	R -e 'devtools::install("~/dev/rampdata", upgrade = "never")'
 	R -e 'devtools::install("~/dev/globalrc", upgrade = "never")'
 
+rc_test_cluster:
+	/ihme/singularity-images/rstudio/shells/execRscript.sh \
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
+	-s rc_kappa_run.R --config=rc_kappa.toml --country=gmb \
+	  --outvars=test --overwrite --years=2010:2011 --cores=1 --draws=3
+
+cluster_install:
+	/ihme/singularity-images/rstudio/shells/execRscript.sh \
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
+	-s install.R
+
 rc_single:
 	Rscript rc_kappa_run.R --config=rc_kappa.toml --country=gmb \
 	  --outvars=test --overwrite --years=2011:2011 --cores=1 --draws=3
@@ -46,16 +57,16 @@ world_mean:
 	Rscript rc_kappa_run.R --config=world_mean.toml \
 	  --outvars=201123_global_median --years=2019:2019 --cores=4 --draws=3
 
-world_mean_plan:
+world_mean_setup:
 	/ihme/singularity-images/rstudio/shells/execRscript.sh \
-	-i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img \
-	-s rc_run_plan.R --config=world_mean.toml   --outvars=201123_global_median --years=2019:2019 --draws=100
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
+	-s rc_cluster.R --config=210908_world.toml   --outvars=210908_fewer --years=2019:2019 --draws=1000 --tasks=1000
 
 world_mean_worker:
 	/ihme/singularity-images/rstudio/shells/execRscript.sh \
-	-i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img \
-	-s rc_run_worker.R --config=world_mean.toml   --outvars=201123_global_median \
-	--years=2019:2019 --draws=3 --tasks=9000
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
+	-s rc_run_worker.R --config=210908_world.toml   --outvars=210908_world \
+	--years=2019:2019 --draws=1000 --tasks=9000
 
 render:
 	rmarkdown::render("notebooks/check_pixel_work.Rmd")

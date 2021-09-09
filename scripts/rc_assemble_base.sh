@@ -2,7 +2,7 @@
 #$ -P proj_mmc
 #$ -cwd
 #$ -j y
-#$ -o /share/temp/sgeoutput/adolgert/rc_kappa_$JOB_ID_$TASK_ID.txt
+#$ -o /share/temp/sgeoutput/adolgert/rc_assemble_$JOB_ID_$TASK_ID.txt
 #$ -N rc_global
 #$ -l fthread=2
 #$ -t 1-18
@@ -20,7 +20,7 @@ then
   export SGE_TASK_ID=`echo $MISSING | cut -d"," -f"${SGE_TASK_ID}"`
 fi
 /ihme/singularity-images/rstudio/shells/execRscript.sh \
-	-i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img \
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
 	-s rc_run_assemble.R --config=${config} \
 	--outvars=${outvars} \
 	--years=${years} 	${country} \

@@ -1,4 +1,4 @@
-
+v
 
 
 #' Given a bunch of filenames, find all four-number digit strings.
@@ -49,6 +49,7 @@ available_data <- function(input_version, country_code, select_years) {
 
     pr_fn <- pfpr_files[1]
     pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
+    flog.info(paste("reading a sample slice for this work from", pfpr_file))
     pfpr <- raster::raster(rampdata::as.path(pfpr_file))
     whole_input_extent <- c(rmin = 1, rmax = raster::nrow(pfpr),
         cmin = 1, cmax = raster::ncol(pfpr)

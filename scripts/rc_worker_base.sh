@@ -20,7 +20,7 @@ then
   export SGE_TASK_ID=`echo $MISSING | cut -d"," -f"${SGE_TASK_ID}"`
 fi
 /ihme/singularity-images/rstudio/shells/execRscript.sh \
-	-i /ihme/singularity-images/rstudio/ihme_rstudio_4030.img \
+	-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
 	-s rc_run_worker.R --config=${config} \
 	--outvars=${outvars} \
 	--years=${years} 	${country} \
