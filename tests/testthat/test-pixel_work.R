@@ -42,13 +42,3 @@ test_that("pixel_work works", {
         expect_true(all(!is.na(results[[var]])))
     }
 })
-
-
-test_that("pr2eirS matches the deterministic one", {
-    pr <- 0.15
-    cnt <- 100
-    pfpr <- rep(pr, cnt)
-    deir_a <- pr2eirS(pfpr)[, 2]
-    deir_b <- pr2deir_quantile(pfpr, runif(cnt), runif(cnt), runif(cnt))
-    expect_equal(length(deir_a), length(deir_b))
-})

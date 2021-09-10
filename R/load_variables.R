@@ -1,6 +1,3 @@
-
-
-
 #' Given a bunch of filenames, find all four-number digit strings.
 #' @param filenames A list of character strings to search.
 #' @return A list of numeric years.
@@ -49,6 +46,7 @@ available_data <- function(input_version, country_code, select_years) {
 
     pr_fn <- pfpr_files[1]
     pfpr_file <- rampdata::add_path(pfpr_dir, file = pr_fn)
+    flog.info(paste("reading a sample slice for this work from", pfpr_file))
     pfpr <- raster::raster(rampdata::as.path(pfpr_file))
     whole_input_extent <- c(rmin = 1, rmax = raster::nrow(pfpr),
         cmin = 1, cmax = raster::ncol(pfpr)
@@ -213,7 +211,9 @@ data_for_country <- function(country_alpha3, years) {
 load_data <- function(config, pr2ar_version, domain_extent, years) {
     parameters <- configr::read.config(config)[["parameters"]]
     pr2ar_rp <- rampdata::workflow_path("pr2ar")
-    pr_to_ar_dt <- data.table::fread(rampdata::as.path(pr2ar_rp))
+    pr2ar_fn <- rampdata::as.path(pr2ar_rp)
+    rampdata::prov.input.file(pr2ar_fn, "pr2ar")
+    pr_to_ar_dt <- data.table::fread(pr2ar_fn)
     pfpr_dir <- rampdata::workflow_path("pfpr")
     am_dir <- rampdata::workflow_path("am")
     pfpr_yearly <- years_in_filenames(list.files(rampdata::as.path(pfpr_dir)))
@@ -246,8 +246,12 @@ load_data <- function(config, pr2ar_version, domain_extent, years) {
             stop(msg)
         }
 
-        pfpr <- raster::raster(rampdata::as.path(pfpr_file))
-        am <- raster::raster(rampdata::as.path(am_file))
+        pfpr_full_fn <- rampdata::as.path(pfpr_file)
+        rampdata::prov.input.file(pfpr_full_fn, "pfpr_input")
+        pfpr <- raster::raster(pfpr_full_fn)
+        am_full_fn <- rampdata::as.path(am_file)
+        rampdata::prov.input.file(am_full_fn, "am_input")
+        am <- raster::raster(am_full_fn)
 
         load_extent <- c(
             domain_extent["rmin"],

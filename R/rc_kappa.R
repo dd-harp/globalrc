@@ -91,6 +91,7 @@ funcmain <- function(args) {
     # We will want to split this work different ways for development,
     # laptops, and the cluster, so we use an explicit domain decomposition.
     rampdata::initialize_workflow(args$config)
+    rampdata::prov.input.file(args$config, "configuration")
     options <- configr::read.config(args$config)[["options"]]
 
     # What can be done and which part we choose to do.
