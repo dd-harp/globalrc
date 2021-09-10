@@ -1,6 +1,3 @@
-v
-
-
 #' Given a bunch of filenames, find all four-number digit strings.
 #' @param filenames A list of character strings to search.
 #' @return A list of numeric years.
