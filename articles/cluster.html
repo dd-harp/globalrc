@@ -32,7 +32,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">globalrc</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -119,6 +119,8 @@
 <a href="#r-main-scripts-and-shell-scripts" class="anchor"></a>R main scripts and shell scripts</h3>
 <ul>
 <li>
+<code>rc_cluster.R</code> - Sets up a new distributed cluster run.</li>
+<li>
 <code>rc_kappa.sh</code> - A shell script to qsub the single-machine version of the code. This was failing on the cluster because R’s fork-cluster would get a SIGPIPE singal.</li>
 <li>
 <code>rc_worker.sh</code> - A shell script to qsub for distributed runs.</li>
@@ -170,7 +172,25 @@
 <li>Run workers to compute that plan.</li>
 <li>Assemble the results from the workers.</li>
 </ol>
-<p>All three steps take the same command line, but they have different scripts.</p>
+<p>All three steps take the same command line arguments. There is a single command sets up for a distributed run, <code>rc_cluster.R</code>. The first item below will describe using this. The following items break it down into parts to explain what happens inside that first command.</p>
+<div id="set-up-for-a-cluster" class="section level3">
+<h3 class="hasAnchor">
+<a href="#set-up-for-a-cluster" class="anchor"></a>Set up for a cluster</h3>
+<p>If you look in <code>scripts/Makefile</code>, you’ll see a call like this one:</p>
+<pre><code>/ihme/singularity-images/rstudio/shells/execRscript.sh \
+-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
+-s rc_cluster.R --config=210908_world.toml   --outvars=210908_fewer \
+--years=2019:2019 --draws=1000 --tasks=1000</code></pre>
+<p>Inside this command’s <code><a href="../reference/main.html">main()</a></code> function, it does the following:</p>
+<ol style="list-style-type: decimal">
+<li>Reads the given config file.</li>
+<li>Writes a plan file, which divides the problem for the cluster nodes using domain decomposition.</li>
+<li>Writes a shell script to do the work that you can submit to the cluster using <code>qsub</code>. It does this by substituting values into a template shell script.</li>
+<li>Writes another shell script to assemble the resulting results into results.</li>
+</ol>
+<p>You can edit the shell scripts. If, for instance, there is less work than there are tasks, then that will lead to the assembly failing. In that case, reduce the number of cluster tasks to be less than the length of the plan file (minus one), and run again.</p>
+<p>Your job is to login to the cluster, submit the first script and look at its job number. That job number will have digits and then a period, like this: 234247929.1-1000. The part before the period is the Job ID, and the rest is the Task Id. When you submit the assembling, you can qsub it and append to that qsub command a flag to tell it to wait for the previous job id.</p>
+</div>
 <div id="create-a-plan-" class="section level3">
 <h3 class="hasAnchor">
 <a href="#create-a-plan-" class="anchor"></a>Create a plan.</h3>

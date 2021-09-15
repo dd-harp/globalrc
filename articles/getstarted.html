@@ -32,7 +32,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">globalrc</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -205,6 +205,12 @@ pngres = 150</code></pre>
 <div id="run-the-program" class="section level1">
 <h1 class="hasAnchor">
 <a href="#run-the-program" class="anchor"></a>Run the program</h1>
+<p>There are three architectures on which this program runs.</p>
+<ol style="list-style-type: decimal">
+<li>Run it on a single computer by invoking one command, as shown below.</li>
+<li>Run it on a distributed cluster, as described in the <code>cluster.Rmd</code> file.</li>
+<li>Run it on a single computer, but in parts so that it avoids using too much memory. In order to do this, set up the problem for the cluster, as described in <code>cluster.Rmd</code>, but call the worker script in a loop. Each invocation will run in parallel over processors, but you’re limiting the total amount of data that’s in memory.</li>
+</ol>
 <p>We’re going to run on the data created above. We use the command line to restrict what subdomain to compute and how many cores to use.</p>
 <ul>
 <li>

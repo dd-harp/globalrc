@@ -31,7 +31,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">globalrc</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -134,7 +134,7 @@
 <div id="example-of-running-the-code" class="section level1">
 <h1 class="hasAnchor">
 <a href="#example-of-running-the-code" class="anchor"></a>Example of Running the Code</h1>
-<p>This example runs the code from a script. The <code>slice_funcmain()</code> function will always load the whole map, one year at a time, and perform calculations on that year.</p>
+<p>This example runs the code from a script. The <code><a href="../reference/slice_funcmain.html">slice_funcmain()</a></code> function will always load the whole map, one year at a time, and perform calculations on that year.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">futile.logger</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/dd-harp/globalrc">globalrc</a></span><span class="op">)</span>
@@ -145,7 +145,7 @@
   <span class="st">"--years=2001:2001"</span>
 <span class="op">)</span>
 <span class="va">args</span> <span class="op">&lt;-</span> <span class="fu">globalrc</span><span class="fu">::</span><span class="fu"><a href="../reference/check_args.html">check_args</a></span><span class="op">(</span><span class="fu">globalrc</span><span class="fu">:::</span><span class="fu"><a href="../reference/arg_parser.html">arg_parser</a></span><span class="op">(</span><span class="va">config_arg</span><span class="op">)</span><span class="op">)</span>
-<span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">globalrc</span><span class="fu">:::</span><span class="fu">slice_funcmain</span><span class="op">(</span><span class="va">args</span><span class="op">)</span></code></pre></div>
+<span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">globalrc</span><span class="fu">:::</span><span class="fu"><a href="../reference/slice_funcmain.html">slice_funcmain</a></span><span class="op">(</span><span class="va">args</span><span class="op">)</span></code></pre></div>
 </div>
 <div id="memory-problems" class="section level1">
 <h1 class="hasAnchor">

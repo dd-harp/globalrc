@@ -71,7 +71,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">globalrc</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -321,7 +321,8 @@ If the file doesn't exist, it will return a NULL.</p></td>
         <td>
           <p><code><a href="linearized_work.html">linearized_work()</a></code> </p>
         </td>
-        <td><p>Takes an input array in multiple dimensions and linearizes and removes NA.</p></td>
+        <td><p>Takes an input array in multiple dimensions and linearizes and removes NA.
+This replaces the outputs back into multiple dimensions after making the call.</p></td>
       </tr><tr>
         
         <td>
@@ -383,7 +384,9 @@ to make the values have good variance there.</p></td>
         <td>
           <p><code><a href="pixel_two.html">pixel_two()</a></code> </p>
         </td>
-        <td><p>Central calculation for pixel work that has low Rc.</p></td>
+        <td><p>This was made with fits to the middle values of PfPR.
+It was finished Monday 23 Nov 2020. This was the version sent
+to MAP that had reasonable values (c is corrected in last step).</p></td>
       </tr><tr>
         
         <td>
@@ -436,6 +439,18 @@ of work to do in order to make data transfer worthwhile.</p></td>
           <p><code><a href="save_plan.html">save_plan()</a></code> </p>
         </td>
         <td><p>Save a plan for parallel execution to a file.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="slice_funcmain.html">slice_funcmain()</a></code> </p>
+        </td>
+        <td><p>If you want to run from the R command line, you can call this.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="slice_main.html">slice_main()</a></code> </p>
+        </td>
+        <td><p>If you want to run from the Bash command line, you can call this.</p></td>
       </tr><tr>
         
         <td>
