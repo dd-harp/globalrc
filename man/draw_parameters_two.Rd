@@ -6,11 +6,6 @@
 \usage{
 draw_parameters_two(parameters, N)
 }
-\arguments{
-\item{parameters}{A list of floats and integers.}
-
-\item{N}{The integer number of parameters to draw. Can be 1 to use means.}
-}
 \description{
 Takes a parameter that is an expression (of drawing a distribution) and calls it.
 }
