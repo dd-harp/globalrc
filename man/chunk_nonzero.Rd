@@ -6,9 +6,6 @@
 \usage{
 chunk_nonzero(chunks)
 }
-\arguments{
-\item{chunks}{A list of tiles with data.}
-}
 \description{
 Find nonzeros in each chunk of tile data to see they loaded.
 }

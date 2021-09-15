@@ -2,19 +2,12 @@
 % Please edit documentation in R/block_work.R
 \name{linearized_work}
 \alias{linearized_work}
-\title{Takes an input array in multiple dimensions and linearizes and removes NA.}
+\title{Takes an input array in multiple dimensions and linearizes and removes NA.
+This replaces the outputs back into multiple dimensions after making the call.}
 \usage{
 linearized_work(input_list, run_func)
 }
-\arguments{
-\item{input_list}{A list of arrays, one for each variable.}
-
-\item{run_func}{The function to run over this list.}
-}
-\value{
-A list of arrays, the output of the \code{run_func}.
-This replaces the outputs back into multiple dimensions after making the call.
-}
 \description{
 Takes an input array in multiple dimensions and linearizes and removes NA.
+This replaces the outputs back into multiple dimensions after making the call.
 }
