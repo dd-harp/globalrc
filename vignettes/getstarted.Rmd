@@ -128,6 +128,16 @@ The parts about `scp` aren't relevant for this program.
 
 # Run the program
 
+There are three architectures on which this program runs.
+
+1. Run it on a single computer by invoking one command, as shown below.
+2. Run it on a distributed cluster, as described in the `cluster.Rmd` file.
+3. Run it on a single computer, but in parts so that it avoids using too much
+   memory. In order to do this, set up the problem for the cluster, as described
+   in `cluster.Rmd`, but call the worker script in a loop. Each invocation will
+   run in parallel over processors, but you're limiting the total amount of
+   data that's in memory.
+
 We're going to run on the data created above. We use the command line to restrict what subdomain to compute and how many cores to use.
 
 * `--config=<config>` This is the configuration file we edited above.
