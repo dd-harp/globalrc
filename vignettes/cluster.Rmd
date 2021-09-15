@@ -22,6 +22,7 @@ in parallel on a single computer, and distributed on the cluster.
 
 ### R main scripts and shell scripts
 
+* `rc_cluster.R` - Sets up a new distributed cluster run.
 * `rc_kappa.sh` - A shell script to qsub the single-machine version of
   the code. This was failing on the cluster because R's fork-cluster
   would get a SIGPIPE singal.
@@ -57,7 +58,42 @@ There is some introductory information for using the cluster in
 2. Run workers to compute that plan.
 3. Assemble the results from the workers.
 
-All three steps take the same command line, but they have different scripts.
+All three steps take the same command line arguments. There is a single
+command sets up for a distributed run, `rc_cluster.R`. The first item below
+will describe using this. The following items break it down into parts to
+explain what happens inside that first command.
+
+### Set up for a cluster
+
+If you look in `scripts/Makefile`, you'll see a call like this one:
+
+```
+/ihme/singularity-images/rstudio/shells/execRscript.sh \
+-i /ihme/singularity-images/rstudio/ihme_rstudio_4051.img \
+-s rc_cluster.R --config=210908_world.toml   --outvars=210908_fewer \
+--years=2019:2019 --draws=1000 --tasks=1000
+```
+
+Inside this command's `main()` function, it does the following:
+
+1. Reads the given config file.
+2. Writes a plan file, which divides the problem for the cluster nodes using
+   domain decomposition.
+3. Writes a shell script to do the work that you can submit to the cluster
+   using `qsub`. It does this by substituting values into a template shell
+   script.
+4. Writes another shell script to assemble the resulting results into results.
+
+You can edit the shell scripts. If, for instance, there is less work than
+there are tasks, then that will lead to the assembly failing. In that case,
+reduce the number of cluster tasks to be less than the length of the
+plan file (minus one), and run again.
+
+Your job is to login to the cluster, submit the first script and look at its
+job number. That job number will have digits and then a period, like this:
+234247929.1-1000. The part before the period is the Job ID, and the rest is
+the Task Id. When you submit the assembling, you can qsub it and append to
+that qsub command a flag to tell it to wait for the previous job id.
 
 ### Create a plan.
 

@@ -1,6 +1,6 @@
 Package: globalrc
 Title: Computes Control Reproductive Number, Rc, from PfPR and Treatment Levels
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: c(
     person(given = "Andrew",
            family = "Dolgert",
